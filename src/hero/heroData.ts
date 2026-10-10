@@ -1,38 +1,38 @@
-// Coordinates are in pixels of the source brochure photo, re-based to the hero stage.
-// Stage = the brochure area of the photo (1190 x 880).
+// Coordinates are in pixels of the brochure stage (1190 x 880).
+// Car-local values are in the car image's own pixels.
 export const STAGE = { w: 1190, h: 880 }
 
 export type CarKey = 'red' | 'white' | 'blue'
 
-// Position (stage px) and size (px) of each car cut-out.
+// Position (stage px) and size (px) of each car image.
 export const CARS: Record<CarKey, { x: number; y: number; w: number; h: number; file: string; alt: string }> = {
-  red: { x: -20, y: 420, w: 660, h: 340, file: 'red.webp', alt: 'Civic RS in red' },
-  white: { x: 470, y: 390, w: 310, h: 175, file: 'white.webp', alt: 'Civic in white' },
-  blue: { x: 675, y: 410, w: 485, h: 260, file: 'blue.webp', alt: 'Civic Oriel in blue' },
+  red: { x: -20, y: 420, w: 660, h: 318, file: 'red.webp', alt: 'Civic RS in red' },
+  white: { x: 470, y: 390, w: 310, h: 155, file: 'white.webp', alt: 'Civic in white' },
+  blue: { x: 675, y: 410, w: 485, h: 240, file: 'blue.webp', alt: 'Civic Oriel in blue' },
 }
 
-// Wheel rims: centre (car-local px), circular rim radius r, and vertical squash k
+// Rim discs: centre (car-local px), circular radius r, and vertical squash k
 // so the spinning rim matches the tyre ellipse in the 3/4 view.
 export const WHEELS: { car: CarKey; file: string; cx: number; cy: number; r: number; k: number }[] = [
-  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 245, r: 42, k: 1.192 },
-  { car: 'red', file: 'wheel_red_r.webp', cx: 55, cy: 195, r: 27, k: 1.294 },
-  { car: 'blue', file: 'wheel_blue_f.webp', cx: 278, cy: 193, r: 27, k: 1.118 },
-  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 130, r: 20, k: 1.2 },
-  { car: 'white', file: 'wheel_white_r.webp', cx: 272, cy: 95, r: 14, k: 1.235 },
+  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 243, r: 42, k: 1.231 },
+  { car: 'red', file: 'wheel_red_r.webp', cx: 45, cy: 195, r: 20, k: 1.8 },
+  { car: 'blue', file: 'wheel_blue_f.webp', cx: 290, cy: 185, r: 24, k: 1.333 },
+  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 115, r: 20, k: 1.2 },
+  { car: 'white', file: 'wheel_white_r.webp', cx: 290, cy: 75, r: 11, k: 1.429 },
 ]
 
 // Tyre contact points (car-local px) where tyre smoke is emitted.
 export const SMOKE: Record<CarKey, [number, number][]> = {
-  red: [[275, 310], [55, 245]],
-  blue: [[278, 225]],
-  white: [[160, 160], [272, 118]],
+  red: [[275, 308], [45, 240]],
+  blue: [[290, 226]],
+  white: [[160, 146], [290, 90]],
 }
 
 // Headlight centres (car-local px) and glow width, in the order they blink: 1, 2, 3.
 export const LIGHTS: { car: CarKey; cx: number; cy: number; w: number }[] = [
-  { car: 'red', cx: 380, cy: 165, w: 160 },
-  { car: 'blue', cx: 195, cy: 130, w: 105 },
-  { car: 'white', cx: 80, cy: 90, w: 80 },
+  { car: 'red', cx: 400, cy: 155, w: 150 },
+  { car: 'blue', cx: 185, cy: 120, w: 95 },
+  { car: 'white', cx: 100, cy: 85, w: 70 },
 ]
 
 // When each car starts rolling in and when it lands (seconds from the start).

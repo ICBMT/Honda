@@ -127,6 +127,19 @@ export default function Hero() {
               className="absolute will-change-transform"
               style={{ left: pct(c.x, STAGE.w), top: pct(c.y, STAGE.h), width: pct(c.w, STAGE.w) }}
             >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute"
+                style={{
+                  left: '4%',
+                  width: '92%',
+                  top: '84%',
+                  height: '18%',
+                  background:
+                    'radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 45%, rgba(0,0,0,0) 72%)',
+                  filter: 'blur(3px)',
+                }}
+              />
               <img src={`/hero/${c.file}`} alt={c.alt} className="block h-auto w-full select-none" draggable={false} />
 
               {WHEELS.filter((w) => w.car === car).map((w) => (
