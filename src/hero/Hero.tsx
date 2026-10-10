@@ -14,12 +14,10 @@ export default function Hero() {
     const wrappers = Object.fromEntries(
       CAR_KEYS.map((k) => [k, el.querySelector<HTMLElement>(`[data-car="${k}"]`)!]),
     ) as Record<CarKey, HTMLElement>
-    const wheelsOf = Object.fromEntries(
-      CAR_KEYS.map((k) => [k, Array.from(el.querySelectorAll<HTMLElement>(`[data-wheel="${k}"]`))]),
-    ) as Record<CarKey, HTMLElement[]>
     const stage = el.querySelector<HTMLElement>('[data-stage]')!
     const lights = Array.from(el.querySelectorAll<HTMLElement>('[data-light]'))
     const letters = Array.from(el.querySelectorAll<HTMLElement>('[data-letter]'))
+    const blurs = Array.from(el.querySelectorAll<HTMLElement>('[data-blur]'))
     const smokeTimers: Partial<Record<CarKey, number>> = {}
 
     const spawnSmoke = (car: CarKey) => {
@@ -54,6 +52,7 @@ export default function Hero() {
       gsap.set(letters, { yPercent: 110, autoAlpha: 0 })
       gsap.set('[data-header], [data-tagline]', { autoAlpha: 0, y: 16 })
       gsap.set(lights, { opacity: 0 })
+      gsap.set(blurs, { opacity: 0 })
 
       // Headlight sequence: 1 -> 2 -> 3, looping.
       const flash = gsap.timeline({ repeat: -1, repeatDelay: 0.9, paused: true })
@@ -64,15 +63,6 @@ export default function Hero() {
           .to(light, { opacity: 1, duration: 0.12 })
           .to(light, { opacity: 0.1, duration: 0.3 })
       })
-
-      // Each car's rims: spin from the moment it starts rolling, and slow to a
-      // stop as it lands, so the wheels never turn while the car is still.
-      const spins = Object.fromEntries(
-        CAR_KEYS.map((k) => [
-          k,
-          gsap.to(wheelsOf[k], { rotation: 360, duration: 0.3, ease: 'none', repeat: -1, transformOrigin: '50% 50%', paused: true }),
-        ]),
-      ) as Record<CarKey, gsap.core.Tween>
 
       const tl = gsap.timeline()
       // 1. Empty entrance pops up
@@ -88,9 +78,10 @@ export default function Hero() {
 
       CAR_KEYS.forEach((k) => {
         const { start, land } = TIMING[k]
-        tl.call(() => spins[k].play(), [], start)
-          // Rims slow down over the last 0.6s of the roll, stopping on landing.
-          .to(spins[k], { timeScale: 0, duration: 0.6, ease: 'power2.out' }, land - 0.6)
+        const carBlurs = blurs.filter((b) => b.dataset.blur === k)
+        // Motion blur over the tyres while the car rolls, cleared on landing.
+        tl.to(carBlurs, { opacity: 1, duration: 0.4, ease: 'power1.out' }, start)
+          .to(carBlurs, { opacity: 0, duration: 0.6, ease: 'power2.out' }, land - 0.4)
           .call(() => { smokeTimers[k] = window.setInterval(() => spawnSmoke(k), 80) }, [], start)
           .call(() => window.clearInterval(smokeTimers[k]), [], land)
       })
@@ -142,26 +133,27 @@ export default function Hero() {
               />
               <img src={`/hero/${c.file}`} alt={c.alt} className="block h-auto w-full select-none" draggable={false} />
 
-              {WHEELS.filter((w) => w.car === car).map((w) => (
-                <div
-                  key={w.file}
-                  className="absolute"
-                  style={{
-                    left: pct(w.cx - w.r, c.w),
-                    top: pct(w.cy - w.r, c.h),
-                    width: pct(2 * w.r, c.w),
-                    aspectRatio: '1 / 1',
-                    transform: `scaleY(${w.k})`,
-                  }}
-                >
-                  <img
-                    data-wheel={car}
-                    src={`/hero/${w.file}`}
-                    alt=""
-                    className="block h-full w-full will-change-transform"
+              {WHEELS.filter((w) => w.car === car).map((w) => {
+                const rx = w.r / 0.62
+                const ry = rx * w.k
+                return (
+                  <div
+                    key={w.file}
+                    data-blur={car}
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: pct(w.cx - rx, c.w),
+                      top: pct(w.cy - ry, c.h),
+                      width: pct(2 * rx, c.w),
+                      height: pct(2 * ry, c.h),
+                      borderRadius: '50%',
+                      background:
+                        'radial-gradient(closest-side, rgba(40,40,44,0.0) 45%, rgba(90,90,96,0.55) 75%, rgba(140,140,146,0) 100%)',
+                      filter: 'blur(2px)',
+                    }}
                   />
-                </div>
-              ))}
+                )
+              })}
 
               {LIGHTS.map((l, i) => (l.car === car ? (
                 <div
