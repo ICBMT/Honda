@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-body { margin: 0; background: #05070d; color: #f5f7fa; overflow-x: hidden; }
+body { margin: 0; background: #05070d; color: #f5f7fa; overflow-x: hidden; font-family: Montserrat, system-ui, sans-serif; }
+.puff {
+  position: absolute;
+  width: 4.5cqw;
+  height: 4.5cqw;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(235,238,242,0.8) 0%, rgba(210,215,222,0.35) 45%, rgba(200,205,212,0) 70%);
+}
