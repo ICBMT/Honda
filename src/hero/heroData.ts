@@ -14,11 +14,11 @@ export const CARS: Record<CarKey, { x: number; y: number; w: number; h: number; 
 // Rim discs: centre (car-local px), circular radius r, and vertical squash k
 // so the spinning rim matches the tyre ellipse in the 3/4 view.
 export const WHEELS: { car: CarKey; file: string; cx: number; cy: number; r: number; k: number }[] = [
-  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 243, r: 42, k: 1.231 },
-  { car: 'red', file: 'wheel_red_r.webp', cx: 45, cy: 195, r: 20, k: 1.8 },
-  { car: 'blue', file: 'wheel_blue_f.webp', cx: 290, cy: 185, r: 24, k: 1.333 },
-  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 115, r: 20, k: 1.2 },
-  { car: 'white', file: 'wheel_white_r.webp', cx: 290, cy: 75, r: 11, k: 1.429 },
+  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 243, r: 32, k: 1.231 },
+  { car: 'red', file: 'wheel_red_r.webp', cx: 45, cy: 195, r: 16, k: 1.8 },
+  { car: 'blue', file: 'wheel_blue_f.webp', cx: 290, cy: 185, r: 19, k: 1.333 },
+  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 115, r: 16, k: 1.2 },
+  { car: 'white', file: 'wheel_white_r.webp', cx: 290, cy: 75, r: 9, k: 1.429 },
 ]
 
 // Tyre contact points (car-local px) where tyre smoke is emitted.
