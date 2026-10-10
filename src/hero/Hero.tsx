@@ -18,6 +18,7 @@ export default function Hero() {
     const lights = Array.from(el.querySelectorAll<HTMLElement>('[data-light]'))
     const letters = Array.from(el.querySelectorAll<HTMLElement>('[data-letter]'))
     const blurs = Array.from(el.querySelectorAll<HTMLElement>('[data-blur]'))
+    const spinners = Array.from(el.querySelectorAll<HTMLElement>('[data-spin]'))
     const smokeTimers: Partial<Record<CarKey, number>> = {}
 
     const spawnSmoke = (car: CarKey) => {
@@ -46,8 +47,10 @@ export default function Hero() {
     const ctx = gsap.context(() => {
       // Initial states
       gsap.set(stage, { autoAlpha: 0, scale: 0.92, filter: 'blur(14px)' })
-      gsap.set(wrappers.red, { xPercent: -160 })
-      gsap.set(wrappers.blue, { xPercent: 160 })
+      // Each car sits level on the floor: a slight tilt so the rear doesn't ride high.
+      gsap.set(wrappers.red, { xPercent: -160, rotation: -1.2, transformOrigin: '50% 90%' })
+      gsap.set(wrappers.blue, { xPercent: 160, rotation: 1.0, transformOrigin: '50% 90%' })
+      gsap.set(wrappers.white, { rotation: 1.0, transformOrigin: '50% 90%' })
       gsap.set(wrappers.white, { autoAlpha: 0, scale: 0.5, yPercent: -30 })
       gsap.set(letters, { yPercent: 110, autoAlpha: 0 })
       gsap.set('[data-header], [data-tagline]', { autoAlpha: 0, y: 16 })
@@ -79,8 +82,13 @@ export default function Hero() {
       CAR_KEYS.forEach((k) => {
         const { start, land } = TIMING[k]
         const carBlurs = blurs.filter((b) => b.dataset.blur === k)
-        // Motion blur over the tyres while the car rolls, cleared on landing.
+        const carSpin = gsap.to(spinners.filter((s) => s.dataset.spin === k), {
+          rotation: 360, duration: 0.35, ease: 'none', repeat: -1, paused: true,
+        })
+        // Spoke pattern over each tyre rotates while the car rolls and slows to a stop on landing.
         tl.to(carBlurs, { opacity: 1, duration: 0.4, ease: 'power1.out' }, start)
+          .call(() => carSpin.play(), [], start)
+          .to(carSpin, { timeScale: 0, duration: 0.6, ease: 'power2.out' }, land - 0.6)
           .to(carBlurs, { opacity: 0, duration: 0.6, ease: 'power2.out' }, land - 0.4)
           .call(() => { smokeTimers[k] = window.setInterval(() => spawnSmoke(k), 80) }, [], start)
           .call(() => window.clearInterval(smokeTimers[k]), [], land)
@@ -124,10 +132,10 @@ export default function Hero() {
                 style={{
                   left: '4%',
                   width: '92%',
-                  top: '84%',
-                  height: '18%',
+                  top: '86%',
+                  height: '16%',
                   background:
-                    'radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 45%, rgba(0,0,0,0) 72%)',
+                    'radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0) 72%)',
                   filter: 'blur(3px)',
                 }}
               />
@@ -147,11 +155,22 @@ export default function Hero() {
                       width: pct(2 * rx, c.w),
                       height: pct(2 * ry, c.h),
                       borderRadius: '50%',
-                      background:
-                        'radial-gradient(closest-side, rgba(40,40,44,0.0) 45%, rgba(90,90,96,0.55) 75%, rgba(140,140,146,0) 100%)',
-                      filter: 'blur(2px)',
+                      overflow: 'hidden',
                     }}
-                  />
+                  >
+                    <div
+                      data-spin={car}
+                      className="absolute inset-0"
+                      style={{
+                        borderRadius: '50%',
+                        background:
+                          'repeating-conic-gradient(from 0deg, rgba(225,225,230,0.75) 0deg 14deg, rgba(60,60,66,0.0) 14deg 60deg)',
+                        filter: 'blur(1.5px)',
+                        WebkitMaskImage: 'radial-gradient(closest-side, rgba(0,0,0,0) 35%, #000 70%, #000 92%, rgba(0,0,0,0) 100%)',
+                        maskImage: 'radial-gradient(closest-side, rgba(0,0,0,0) 35%, #000 70%, #000 92%, rgba(0,0,0,0) 100%)',
+                      }}
+                    />
+                  </div>
                 )
               })}
 

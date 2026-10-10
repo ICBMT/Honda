@@ -24,7 +24,7 @@ export const WHEELS: { car: CarKey; file: string; cx: number; cy: number; r: num
 // Tyre contact points (car-local px) where tyre smoke is emitted.
 export const SMOKE: Record<CarKey, [number, number][]> = {
   red: [[275, 308], [45, 240]],
-  blue: [[290, 226]],
+  blue: [[290, 226], [455, 186]],
   white: [[160, 146], [290, 90]],
 }
 
