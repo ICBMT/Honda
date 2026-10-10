@@ -11,13 +11,14 @@ export const CARS: Record<CarKey, { x: number; y: number; w: number; h: number; 
   blue: { x: 675, y: 410, w: 485, h: 260, file: 'blue.webp', alt: 'Civic Oriel in blue' },
 }
 
-// Wheel centre (car-local px) and radius, used for the spinning rims.
-export const WHEELS: { car: CarKey; file: string; cx: number; cy: number; r: number }[] = [
-  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 245, r: 58 },
-  { car: 'red', file: 'wheel_red_r.webp', cx: 55, cy: 195, r: 42 },
-  { car: 'blue', file: 'wheel_blue_f.webp', cx: 278, cy: 193, r: 36 },
-  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 130, r: 30 },
-  { car: 'white', file: 'wheel_white_r.webp', cx: 272, cy: 95, r: 22 },
+// Wheel rims: centre (car-local px), circular rim radius r, and vertical squash k
+// so the spinning rim matches the tyre ellipse in the 3/4 view.
+export const WHEELS: { car: CarKey; file: string; cx: number; cy: number; r: number; k: number }[] = [
+  { car: 'red', file: 'wheel_red_f.webp', cx: 275, cy: 245, r: 42, k: 1.192 },
+  { car: 'red', file: 'wheel_red_r.webp', cx: 55, cy: 195, r: 27, k: 1.294 },
+  { car: 'blue', file: 'wheel_blue_f.webp', cx: 278, cy: 193, r: 27, k: 1.118 },
+  { car: 'white', file: 'wheel_white_f.webp', cx: 160, cy: 130, r: 20, k: 1.2 },
+  { car: 'white', file: 'wheel_white_r.webp', cx: 272, cy: 95, r: 14, k: 1.235 },
 ]
 
 // Tyre contact points (car-local px) where tyre smoke is emitted.

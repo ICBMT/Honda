@@ -129,24 +129,26 @@ export default function Hero() {
             >
               <img src={`/hero/${c.file}`} alt={c.alt} className="block h-auto w-full select-none" draggable={false} />
 
-              {WHEELS.filter((w) => w.car === car).map((w) => {
-                const s = w.r + 3
-                return (
+              {WHEELS.filter((w) => w.car === car).map((w) => (
+                <div
+                  key={w.file}
+                  className="absolute"
+                  style={{
+                    left: pct(w.cx - w.r, c.w),
+                    top: pct(w.cy - w.r, c.h),
+                    width: pct(2 * w.r, c.w),
+                    aspectRatio: '1 / 1',
+                    transform: `scaleY(${w.k})`,
+                  }}
+                >
                   <img
-                    key={w.file}
                     data-wheel={car}
                     src={`/hero/${w.file}`}
                     alt=""
-                    className="absolute will-change-transform"
-                    style={{
-                      left: pct(w.cx - s, c.w),
-                      top: pct(w.cy - s, c.h),
-                      width: pct(2 * s, c.w),
-                      aspectRatio: '1 / 1',
-                    }}
+                    className="block h-full w-full will-change-transform"
                   />
-                )
-              })}
+                </div>
+              ))}
 
               {LIGHTS.map((l, i) => (l.car === car ? (
                 <div
@@ -158,10 +160,8 @@ export default function Hero() {
                     top: pct(l.cy - (l.w * 0.45) / 2, c.h),
                     width: pct(l.w, c.w),
                     height: pct(l.w * 0.45, c.h),
-                    borderRadius: '50%',
                     background:
-                      'radial-gradient(closest-side, #ffffff 0%, #fffdf0 35%, rgba(255,246,200,0.7) 60%, rgba(255,240,180,0) 100%)',
-                    boxShadow: '0 0 1.4cqw 0.6cqw rgba(255,250,225,0.95)',
+                      'radial-gradient(closest-side, rgba(255,255,240,1), rgba(255,248,210,0.6) 45%, rgba(255,240,180,0) 100%)',
                   }}
                 />
               ) : null))}
