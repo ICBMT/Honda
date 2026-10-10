@@ -1,45 +1,47 @@
 import { useLayoutEffect, useRef } from 'react'
 import gsap from 'gsap'
-import { STAGE, CARS, WHEELS, SMOKE, LIGHTS, type CarKey } from './heroData'
+import { STAGE, CARS, WHEELS, SMOKE, LIGHTS, TIMING, type CarKey } from './heroData'
 
 const pct = (v: number, total: number) => `${(v / total) * 100}%`
 const CIVIC = 'CIVIC'.split('')
+const CAR_KEYS = Object.keys(CARS) as CarKey[]
 
 export default function Hero() {
   const root = useRef<HTMLElement>(null)
 
   useLayoutEffect(() => {
     const el = root.current!
-    const wrap = (k: CarKey) => el.querySelector<HTMLElement>(`[data-car="${k}"]`)!
-    const wrappers: Record<CarKey, HTMLElement> = { red: wrap('red'), white: wrap('white'), blue: wrap('blue') }
+    const wrappers = Object.fromEntries(
+      CAR_KEYS.map((k) => [k, el.querySelector<HTMLElement>(`[data-car="${k}"]`)!]),
+    ) as Record<CarKey, HTMLElement>
+    const wheelsOf = Object.fromEntries(
+      CAR_KEYS.map((k) => [k, Array.from(el.querySelectorAll<HTMLElement>(`[data-wheel="${k}"]`))]),
+    ) as Record<CarKey, HTMLElement[]>
     const stage = el.querySelector<HTMLElement>('[data-stage]')!
-    const wheels = Array.from(el.querySelectorAll<HTMLElement>('[data-wheel]'))
     const lights = Array.from(el.querySelectorAll<HTMLElement>('[data-light]'))
     const letters = Array.from(el.querySelectorAll<HTMLElement>('[data-letter]'))
-    let smokeTimer = 0
+    const smokeTimers: Partial<Record<CarKey, number>> = {}
 
-    const spawnSmoke = () => {
-      ;(Object.keys(SMOKE) as CarKey[]).forEach((car) => {
-        SMOKE[car].forEach(([lx, ly]) => {
-          const d = document.createElement('div')
-          d.className = 'puff'
-          d.style.left = pct(lx, CARS[car].w)
-          d.style.top = pct(ly, CARS[car].h)
-          wrappers[car].appendChild(d)
-          gsap.fromTo(
-            d,
-            { scale: 0.3, opacity: 0.85, xPercent: -50, yPercent: -50 },
-            {
-              scale: 2.4 + Math.random(),
-              opacity: 0,
-              x: (Math.random() - 0.5) * 60,
-              y: -20 - Math.random() * 40,
-              duration: 1.4 + Math.random() * 0.4,
-              ease: 'power1.out',
-              onComplete: () => d.remove(),
-            },
-          )
-        })
+    const spawnSmoke = (car: CarKey) => {
+      SMOKE[car].forEach(([lx, ly]) => {
+        const d = document.createElement('div')
+        d.className = 'puff'
+        d.style.left = pct(lx, CARS[car].w)
+        d.style.top = pct(ly, CARS[car].h)
+        wrappers[car].appendChild(d)
+        gsap.fromTo(
+          d,
+          { scale: 0.3, opacity: 0.85, xPercent: -50, yPercent: -50 },
+          {
+            scale: 2.4 + Math.random(),
+            opacity: 0,
+            x: (Math.random() - 0.5) * 60,
+            y: -20 - Math.random() * 40,
+            duration: 1.4 + Math.random() * 0.4,
+            ease: 'power1.out',
+            onComplete: () => d.remove(),
+          },
+        )
       })
     }
 
@@ -53,10 +55,6 @@ export default function Hero() {
       gsap.set('[data-header], [data-tagline]', { autoAlpha: 0, y: 16 })
       gsap.set(lights, { opacity: 0 })
 
-      // Rims spin continuously; slowed to a stop at the end of the roll-in.
-      const spin = gsap.to(wheels, { rotation: 360, duration: 0.3, ease: 'none', repeat: -1, transformOrigin: '50% 50%' })
-      spin.pause()
-
       // Headlight sequence: 1 -> 2 -> 3, looping.
       const flash = gsap.timeline({ repeat: -1, repeatDelay: 0.9, paused: true })
       lights.forEach((light) => {
@@ -67,26 +65,42 @@ export default function Hero() {
           .to(light, { opacity: 0.1, duration: 0.3 })
       })
 
+      // Each car's rims: spin from the moment it starts rolling, and slow to a
+      // stop as it lands, so the wheels never turn while the car is still.
+      const spins = Object.fromEntries(
+        CAR_KEYS.map((k) => [
+          k,
+          gsap.to(wheelsOf[k], { rotation: 360, duration: 0.3, ease: 'none', repeat: -1, transformOrigin: '50% 50%', paused: true }),
+        ]),
+      ) as Record<CarKey, gsap.core.Tween>
+
       const tl = gsap.timeline()
       // 1. Empty entrance pops up
       tl.to(stage, { autoAlpha: 1, scale: 1, filter: 'blur(0px)', duration: 1.1, ease: 'expo.out' }, 0)
         .to('[data-header]', { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0.5)
         .to(letters, { yPercent: 0, autoAlpha: 1, duration: 0.9, stagger: 0.07, ease: 'power4.out' }, 0.8)
         .to('[data-tagline]', { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 1.2)
-        // 2. Cars roll in from their brochure positions
-        .call(() => spin.play(), [], 1.0)
-        .call(() => { smokeTimer = window.setInterval(spawnSmoke, 80) }, [], 1.0)
-        .to(wrappers.red, { xPercent: 0, duration: 2.0, ease: 'power3.out' }, 1.0)
-        .to(wrappers.blue, { xPercent: 0, duration: 2.0, ease: 'power3.out' }, 1.15)
-        .to(wrappers.white, { autoAlpha: 1, scale: 1, yPercent: 0, duration: 2.0, ease: 'power2.out' }, 1.4)
-        // 3. Tyres stop, smoke ends, headlights start blinking
-        .call(() => clearInterval(smokeTimer), [], 3.2)
-        .to(spin, { timeScale: 0, duration: 1.4, ease: 'power2.out' }, 3.0)
-        .call(() => flash.play(), [], 3.4)
+
+      // 2. Cars roll in from their brochure positions
+      tl.to(wrappers.red, { xPercent: 0, duration: 2.0, ease: 'power3.out' }, TIMING.red.start)
+        .to(wrappers.blue, { xPercent: 0, duration: 2.0, ease: 'power3.out' }, TIMING.blue.start)
+        .to(wrappers.white, { autoAlpha: 1, scale: 1, yPercent: 0, duration: 2.0, ease: 'power2.out' }, TIMING.white.start)
+
+      CAR_KEYS.forEach((k) => {
+        const { start, land } = TIMING[k]
+        tl.call(() => spins[k].play(), [], start)
+          // Rims slow down over the last 0.6s of the roll, stopping on landing.
+          .to(spins[k], { timeScale: 0, duration: 0.6, ease: 'power2.out' }, land - 0.6)
+          .call(() => { smokeTimers[k] = window.setInterval(() => spawnSmoke(k), 80) }, [], start)
+          .call(() => window.clearInterval(smokeTimers[k]), [], land)
+      })
+
+      // 3. Headlights start blinking once all three cars have landed
+      tl.call(() => flash.play(), [], Math.max(...CAR_KEYS.map((k) => TIMING[k].land)) + 0.1)
     }, el)
 
     return () => {
-      clearInterval(smokeTimer)
+      Object.values(smokeTimers).forEach((t) => window.clearInterval(t))
       ctx.revert()
     }
   }, [])
@@ -104,7 +118,7 @@ export default function Hero() {
       >
         <img src="/hero/backdrop.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
 
-        {(Object.keys(CARS) as CarKey[]).map((car) => {
+        {CAR_KEYS.map((car) => {
           const c = CARS[car]
           return (
             <div
@@ -120,7 +134,7 @@ export default function Hero() {
                 return (
                   <img
                     key={w.file}
-                    data-wheel
+                    data-wheel={car}
                     src={`/hero/${w.file}`}
                     alt=""
                     className="absolute will-change-transform"
