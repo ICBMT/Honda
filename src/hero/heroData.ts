@@ -29,9 +29,9 @@ export const SMOKE: Record<CarKey, [number, number][]> = {
 
 // Headlight centres (car-local px) and glow width, in the order they blink: 1, 2, 3.
 export const LIGHTS: { car: CarKey; cx: number; cy: number; w: number }[] = [
-  { car: 'red', cx: 405, cy: 162, w: 150 },
-  { car: 'blue', cx: 185, cy: 135, w: 95 },
-  { car: 'white', cx: 90, cy: 85, w: 70 },
+  { car: 'red', cx: 380, cy: 165, w: 160 },
+  { car: 'blue', cx: 195, cy: 130, w: 105 },
+  { car: 'white', cx: 80, cy: 90, w: 80 },
 ]
 
 // When each car starts rolling in and when it lands (seconds from the start).

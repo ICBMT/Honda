@@ -158,8 +158,10 @@ export default function Hero() {
                     top: pct(l.cy - (l.w * 0.45) / 2, c.h),
                     width: pct(l.w, c.w),
                     height: pct(l.w * 0.45, c.h),
+                    borderRadius: '50%',
                     background:
-                      'radial-gradient(closest-side, rgba(255,255,240,1), rgba(255,248,210,0.6) 45%, rgba(255,240,180,0) 100%)',
+                      'radial-gradient(closest-side, #ffffff 0%, #fffdf0 35%, rgba(255,246,200,0.7) 60%, rgba(255,240,180,0) 100%)',
+                    boxShadow: '0 0 1.4cqw 0.6cqw rgba(255,250,225,0.95)',
                   }}
                 />
               ) : null))}
