@@ -34,15 +34,15 @@ export function LcdnScene() {
       <circle cx="718" cy="96" r="8" fill="#2d3238" />
       <circle cx="718" cy="120" r="8" fill="#33e07a" className="light-blink" />
 
-      {/* Lead car (white): waits, then pulls away */}
+      {/* Road in front of the stopped car */}
+      <rect y="190" width="800" height="110" fill={ROAD} />
+      <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lcdn-lane" />
+
+      {/* Lead car (white): waits, then pulls away. Drawn in front of the road. */}
       <g className="lcdn-lead">
         <Shadow cx={450} cy={252} rx={145} />
         <image href={C + 'white_side.webp'} x="300" y="150" width="300" height="101" />
       </g>
-
-      {/* Road in front of the stopped car */}
-      <rect y="190" width="800" height="110" fill={ROAD} />
-      <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lcdn-lane" />
 
       {/* Ego car (red): stopped and watching with the sensor */}
       <Shadow cx={165} cy={262} rx={140} />
