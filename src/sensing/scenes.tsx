@@ -127,8 +127,8 @@ export function LcdnScene() {
       <circle cx="766" cy="120" r="8" fill="#33e07a" className="light-blink" />
       {/* Lead car sits in the far lane: drawn before the near road so the road edge covers its lower part */}
       <g className="lead-depart">
-        <Shadow cx={575} cy={214} rx={145} />
-        <image href={C + 'white_side.webp'} x="430" y="112" width="290" height="98" />
+        <Shadow cx={385} cy={190} rx={115} />
+        <image href={C + 'white_side.webp'} x="262" y="108" width="240" height="81" />
       </g>
       <rect y="190" width="800" height="110" fill={ROAD} />
       <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
