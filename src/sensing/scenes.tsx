@@ -2,6 +2,8 @@
 // Every scene is one SVG in an 800 x 300 space, built from the generated
 // car cut-outs, so it scales cleanly to any card.
 import type { FeatureCode } from './features'
+import { LcdnScene } from './LcdnScene'
+export { LcdnScene }
 
 const C = '/sensing/cars/'
 const ROAD = '#3a3f48'
@@ -98,42 +100,6 @@ export function AccScene() {
       <image href={C + 'grey_top.webp'} x="530" y="137" width="120" height="55" />
       <text x="230" y="222" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 80 km/h</text>
       <text x="590" y="222" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 80 km/h</text>
-    </svg>
-  )
-}
-
-export function LcdnScene() {
-  return (
-    <svg viewBox="0 0 800 300" className="block h-full w-full" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <linearGradient id="lcdn-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f6f1e7" />
-          <stop offset="1" stopColor="#d9d2c2" />
-        </linearGradient>
-      </defs>
-      <rect width="800" height="300" fill="url(#lcdn-sky)" />
-      <g fill="#cfc6b3" opacity="0.8">
-        <rect x="0" y="60" width="90" height="120" />
-        <rect x="110" y="90" width="70" height="90" />
-        <rect x="200" y="50" width="110" height="130" />
-        <rect x="330" y="95" width="80" height="85" />
-        <rect x="430" y="70" width="120" height="110" />
-        <rect x="570" y="100" width="90" height="80" />
-      </g>
-      {/* Traffic light: green blinks when the lead car is away */}
-      <rect x="748" y="50" width="36" height="92" rx="6" fill="#222" />
-      <circle cx="766" cy="72" r="8" fill="#2d3238" />
-      <circle cx="766" cy="96" r="8" fill="#2d3238" />
-      <circle cx="766" cy="120" r="8" fill="#33e07a" className="light-blink" />
-      {/* Lead car sits in the far lane: drawn before the near road so the road edge covers its lower part */}
-      <g className="lead-depart">
-        <Shadow cx={385} cy={190} rx={115} />
-        <image href={C + 'white_side.webp'} x="262" y="108" width="240" height="81" />
-      </g>
-      <rect y="190" width="800" height="110" fill={ROAD} />
-      <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
-      <Shadow cx={185} cy={262} rx={150} />
-      <image href={C + 'red_side.webp'} x="30" y="150" width="310" height="106" />
     </svg>
   )
 }

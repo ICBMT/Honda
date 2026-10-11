@@ -86,3 +86,28 @@
 @media (prefers-reduced-motion: reduce) {
   .radar-dome-sweep, .radar-dome-ring { animation: none; }
 }
+
+/* LCDN: lead car waits at the light, pulls away; sensor and driver alert follow */
+@keyframes lcdn-lead-go {
+  0%, 18%  { transform: translateX(0px); opacity: 1; }
+  52%      { transform: translateX(330px); opacity: 1; }
+  56%, 99% { transform: translateX(340px); opacity: 0; }
+  100%     { transform: translateX(0px); opacity: 1; }
+}
+.lcdn-lead { animation: lcdn-lead-go 6s ease-in-out infinite; }
+@keyframes lcdn-sense {
+  0%, 22%  { opacity: 0; }
+  30%, 60% { opacity: 1; }
+  70%, 100% { opacity: 0; }
+}
+.lcdn-sense { animation: lcdn-sense 6s ease-in-out infinite; }
+@keyframes lcdn-notify {
+  0%, 26%  { opacity: 0; transform: translateY(6px); }
+  36%, 70% { opacity: 1; transform: translateY(0); }
+  80%, 100% { opacity: 0; transform: translateY(-4px); }
+}
+.lcdn-notify { animation: lcdn-notify 6s ease-in-out infinite; transform-box: fill-box; }
+@keyframes lcdn-lane {
+  to { stroke-dashoffset: -58; }
+}
+.lcdn-lane { animation: lcdn-lane 1.2s linear infinite; }
