@@ -131,7 +131,7 @@ export default function Sensing() {
                   <span className="radar-dome-ring" style={{ animationDelay: '1.07s' }} />
                   <span className="radar-dome-ring" style={{ animationDelay: '2.13s' }} />
                 </div>
-
+              </div>
             </div>
 
             {/* Right panel: title block, as in the print */}
