@@ -118,7 +118,7 @@ export default function Sensing() {
               <div className="absolute left-[8%] bottom-[2%] h-[46%] w-[80%] bg-[radial-gradient(ellipse_at_50%_55%,rgba(50,140,255,0.6),rgba(20,80,180,0.25)_45%,transparent_70%)]" />
 
               {/* Car + radar, sharing one coordinate space so the sensors stay on the car */}
-              <div className="absolute left-[13%] top-[40%] w-[42%]">
+              <div className="absolute left-[17%] top-[42%] w-[70%]">
                 <img
                   src="/sensing/cars/blue_front.webp"
                   alt="Honda Civic with Honda SENSING"
