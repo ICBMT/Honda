@@ -66,6 +66,15 @@ export default function Sensing() {
   const wrap = useRef<HTMLElement>(null)
   const track = useRef<HTMLDivElement>(null)
   const part1 = useRef<HTMLDivElement>(null)
+  const signRef = useRef<HTMLDivElement>(null)
+
+  // The hazard sign follows the pointer while it is over the radar scan area.
+  const showSign = (on: boolean) => {
+    if (signRef.current) signRef.current.style.opacity = on ? '1' : '0'
+  }
+  const moveSign = (e: React.PointerEvent) => {
+    if (signRef.current) signRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`
+  }
 
   useLayoutEffect(() => {
     const el = wrap.current!
@@ -165,7 +174,7 @@ export default function Sensing() {
                 />
 
                 {/* Radar dome: rotating sweep and expanding rings around the car */}
-                <div data-intro="dome" className="radar-dome" aria-hidden="true">
+                <div data-intro="dome" className="radar-dome" aria-hidden="true" onPointerEnter={() => showSign(true)} onPointerLeave={() => showSign(false)} onPointerMove={moveSign}>
                   <span className="radar-dome-edge" />
                   <span className="radar-dome-sweep" />
                   <span className="radar-dome-ring" style={{ animationDelay: '0s' }} />
@@ -234,6 +243,17 @@ export default function Sensing() {
           </p>
         </div>
       </div>
+      {createPortal(
+        <div ref={signRef} className="pointer-events-none fixed left-0 top-0 z-[1000] opacity-0 transition-opacity duration-200" style={{ width: 40, height: 36 }}>
+          <svg viewBox="0 0 100 90" className="block h-full w-full drop-shadow-[0_0_8px_rgba(255,60,60,0.6)]" aria-hidden="true">
+            <path d="M50 4 L96 84 L4 84 Z" fill="#d7262e" stroke="#b81d24" strokeWidth="5" strokeLinejoin="round" />
+            <path d="M50 17 L83 74 L17 74 Z" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinejoin="round" />
+            <rect x="45" y="32" width="10" height="28" rx="3" fill="#ffffff" />
+            <circle cx="50" cy="69" r="5.5" fill="#ffffff" />
+          </svg>
+        </div>,
+        document.body,
+      )}
     </section>
   )
 }
