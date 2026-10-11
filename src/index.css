@@ -159,3 +159,70 @@ body { margin: 0; background: #05070d; color: #f5f7fa; overflow-x: hidden; font-
 
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 .spin-slow { animation: spin-slow 3s linear infinite; }
+
+/* ---------- Sensing: scan over the printed car panel ---------- */
+@keyframes scan-sweep {
+  0%   { left: -16%; opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { left: 102%; opacity: 0; }
+}
+.scan-band {
+  left: -16%;
+  background: linear-gradient(90deg, rgba(90,210,255,0) 0%, rgba(90,210,255,0.22) 50%, rgba(190,240,255,0.5) 60%, rgba(90,210,255,0) 100%);
+  mix-blend-mode: screen;
+  animation: scan-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes scan-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.scan-status { animation: scan-blink 1.4s steps(2, start) infinite; }
+
+/* ---------- Sensing: highlights on the illustrations ---------- */
+.fx-ring {
+  position: absolute;
+  width: 7%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+@keyframes fx-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
+  100% { box-shadow: 0 0 0 14px rgba(255,255,255,0); }
+}
+.fx-warn { animation: fx-pulse 1.2s ease-out infinite; box-shadow: 0 0 0 0 rgba(224,32,42,0.8); background: rgba(224,32,42,0.15); }
+.fx-cone { animation: fx-pulse 1.6s ease-out infinite; background: rgba(90,210,255,0.25); }
+.fx-green { animation: fx-pulse 1.4s ease-out infinite; background: rgba(51,224,122,0.25); }
+.fx-dot { animation: fx-pulse 1.6s ease-out infinite; background: rgba(224,32,42,0.2); }
+.fx-blue { animation: fx-pulse 1.3s ease-out infinite; background: rgba(47,123,255,0.25); }
+
+@keyframes fx-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.fx-wheel {
+  position: absolute;
+  width: 7.5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px dashed rgba(190,240,255,0.9);
+  transform: translate(-50%, -50%);
+  animation: fx-spin 2.4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes fx-shine {
+  0%   { left: -40%; }
+  60%  { left: 120%; }
+  100% { left: 120%; }
+}
+.fx-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  left: -40%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+  animation: fx-shine 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
