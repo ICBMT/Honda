@@ -109,7 +109,7 @@ export default function Sensing() {
               {/* Glow pooled under the car */}
               <div className="absolute left-[8%] bottom-[2%] h-[46%] w-[80%] bg-[radial-gradient(ellipse_at_50%_55%,rgba(50,140,255,0.6),rgba(20,80,180,0.25)_45%,transparent_70%)]" />
 
-              {/* Car + radar, sharing one coordinate space so the sensors stay on the car */}
+              {/* Car with its blue glow */}
               <div className="absolute left-[17%] top-[42%] w-[70%]">
                 <img
                   src="/sensing/cars/blue_front.webp"
@@ -118,28 +118,7 @@ export default function Sensing() {
                   draggable={false}
                 />
 
-                {/* Scanning band sweeping across the car */}
-                <span className="scan-band absolute inset-y-0 z-20 w-[16%]" />
-
-                {/* Radar from the front of the car */}
-                <div className="absolute z-20" style={{ left: `${SENSORS[0].x * 100}%`, top: `${SENSORS[0].y * 100}%` }}>
-                  {[0, 1, 2].map((i) => (
-                    <span key={i} className="radar-ring" style={{ width: '22%', height: 'auto', aspectRatio: '1', animationDelay: `${i * 1.05}s` }} />
-                  ))}
-                  <span className="radar-sweep" style={{ width: '36%', height: 'auto', aspectRatio: '1' }} />
-                  <span className="radar-core" />
-                </div>
-
-                {/* Sensor points on the body, pulsing in turn */}
-                {SENSORS.map((s, i) => (
-                  <div key={i} className="absolute z-20" style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%` }}>
-                    <span className="sensor-dot" style={{ animationDelay: `${i * 0.5}s` }} />
-                    {s.label && <span className="detect-label" style={{ left: '1.2%', top: '-2.4%' }}>{s.label}</span>}
-                  </div>
-                ))}
               </div>
-
-              <p className="scan-status absolute left-[6%] top-[8%] text-[clamp(10px,1vw,14px)] tracking-[0.3em] text-cyan-200">● SCANNING · 360°</p>
             </div>
 
             {/* Right panel: title block, as in the print */}
