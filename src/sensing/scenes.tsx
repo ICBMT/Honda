@@ -129,10 +129,6 @@ export function LcdnScene() {
       <circle cx="700" cy="120" r="8" fill="#33e07a" className="light-blink" />
       <Shadow cx={185} cy={262} rx={150} />
       <image href={C + 'red_side.webp'} x="30" y="150" width="310" height="106" />
-      <g className="lead-depart">
-        <Shadow cx={575} cy={256} rx={145} />
-        <image href={C + 'white_side.webp'} x="430" y="152" width="290" height="98" />
-      </g>
     </svg>
   )
 }
