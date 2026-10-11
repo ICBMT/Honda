@@ -64,18 +64,39 @@ export default function Sensing() {
         },
       })
 
-      // Part one fades and rolls in when the section comes into view.
-      gsap.fromTo(
-        part1.current,
-        { xPercent: -30, opacity: 0 },
-        {
-          xPercent: 0,
-          opacity: 1,
-          duration: 2.4,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: el, start: 'top 70%', once: true },
-        },
-      )
+      // Part one entrance: backdrop, glow, car, radar dome, then the title lines.
+      const intro = gsap.timeline({
+        paused: true,
+        defaults: { ease: 'power3.out' },
+      })
+      intro
+        .fromTo('[data-intro="sky"]', { opacity: 0 }, { opacity: 1, duration: 1.6, ease: 'power1.out' }, 0)
+        .fromTo('[data-intro="glow"]', { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 1.8 }, 0.3)
+        .fromTo(
+          '[data-intro="car"]',
+          { x: -90, opacity: 0, filter: 'blur(14px)' },
+          { x: 0, opacity: 1, filter: 'blur(0px)', duration: 1.9, ease: 'power3.out' },
+          0.5,
+        )
+        .fromTo(
+          '[data-intro="dome"]',
+          { opacity: 0, scale: 0.9 },
+          { opacity: 1, scale: 1, duration: 1.2, ease: 'power2.out' },
+          2.1,
+        )
+        .fromTo(
+          '[data-intro="title"] > *',
+          { y: 36, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.9, stagger: 0.18 },
+          1.0,
+        )
+
+      ScrollTrigger.create({
+        trigger: el,
+        start: 'top 70%',
+        once: true,
+        onEnter: () => intro.play(),
+      })
 
       gsap.utils.toArray<HTMLElement>('[data-card]').forEach((card, i) => {
         gsap.fromTo(
@@ -107,15 +128,15 @@ export default function Sensing() {
         <div className="relative h-full w-screen overflow-hidden bg-[#0a0c10]">
           <div ref={part1} className="absolute inset-0">
             {/* Left panel: night city with blue light, as in the print */}
-            <div className="absolute inset-y-0 left-0 w-[62%] overflow-hidden">
+            <div data-intro="sky" className="absolute inset-y-0 left-0 w-[62%] overflow-hidden">
               <Skyline />
               {/* Blue light wash across the horizon */}
-              <div className="absolute inset-x-0 bottom-[18%] h-[30%] bg-[radial-gradient(ellipse_at_40%_60%,rgba(40,130,255,0.55),transparent_65%)]" />
+              <div className="absolute inset-x-0 bottom-[22%] h-[26%] bg-[radial-gradient(ellipse_at_30%_50%,rgba(40,120,255,0.4),transparent_70%)]" />
               {/* Glow pooled under the car */}
-              <div className="absolute left-[8%] bottom-[2%] h-[46%] w-[80%] bg-[radial-gradient(ellipse_at_50%_55%,rgba(50,140,255,0.6),rgba(20,80,180,0.25)_45%,transparent_70%)]" />
+              <div data-intro="glow" className="absolute left-[8%] bottom-[2%] h-[46%] w-[80%] bg-[radial-gradient(ellipse_at_50%_55%,rgba(50,140,255,0.6),rgba(20,80,180,0.25)_45%,transparent_70%)]" />
 
               {/* Car with its blue glow */}
-              <div className="absolute left-[17%] top-[42%] w-[70%]">
+              <div data-intro="car" className="absolute left-[17%] top-[42%] w-[70%]">
                 <img
                   src="/sensing/cars/blue_front.webp"
                   alt="Honda Civic with Honda SENSING"
@@ -124,7 +145,7 @@ export default function Sensing() {
                 />
 
                 {/* Radar dome: rotating sweep and expanding rings around the car */}
-                <div className="radar-dome" aria-hidden="true">
+                <div data-intro="dome" className="radar-dome" aria-hidden="true">
                   <span className="radar-dome-edge" />
                   <span className="radar-dome-sweep" />
                   <span className="radar-dome-ring" style={{ animationDelay: '0s' }} />
@@ -135,7 +156,7 @@ export default function Sensing() {
             </div>
 
             {/* Right panel: title block, as in the print */}
-            <div className="absolute inset-y-0 right-0 flex w-[38%] flex-col items-start justify-center bg-[#0b0c0f] pl-[4%]">
+            <div data-intro="title" className="absolute inset-y-0 right-0 flex w-[38%] flex-col items-start justify-center bg-[#0b0c0f] pl-[4%]">
               <p className="text-[clamp(14px,1.5vw,24px)] font-light tracking-[0.12em] text-white">Honda</p>
               <h2 className="mt-[1vh] text-[clamp(40px,6.2vw,110px)] font-bold leading-none tracking-[0.04em]">SENSING</h2>
               <p className="mt-[4vh] text-[clamp(14px,1.6vw,26px)] font-bold leading-tight tracking-[0.02em]">
@@ -153,7 +174,7 @@ export default function Sensing() {
             <article
               key={f.code}
               data-card
-              className="relative flex min-h-0 flex-col overflow-hidden rounded-md border border-white/10 bg-[#101318]"
+              className="relative flex min-h-0 flex-col overflow-hidden rounded-md border border-white/10 bg-[#101318] transition-colors duration-500 hover:border-cyan-300/30"
             >
               <div className="relative min-h-0 flex-1 overflow-hidden">
                 <SceneFor code={f.code} />
