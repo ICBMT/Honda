@@ -123,7 +123,15 @@ export default function Sensing() {
                   draggable={false}
                 />
 
-              </div>
+                {/* Radar dome: rotating sweep and expanding rings around the car */}
+                <div className="radar-dome" aria-hidden="true">
+                  <span className="radar-dome-edge" />
+                  <span className="radar-dome-sweep" />
+                  <span className="radar-dome-ring" style={{ animationDelay: '0s' }} />
+                  <span className="radar-dome-ring" style={{ animationDelay: '1.07s' }} />
+                  <span className="radar-dome-ring" style={{ animationDelay: '2.13s' }} />
+                </div>
+
             </div>
 
             {/* Right panel: title block, as in the print */}

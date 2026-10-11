@@ -42,3 +42,47 @@
   50%      { opacity: 1; }
 }
 .fx-pulse-dot { animation: dot-pulse 1.6s ease-in-out infinite; }
+
+/* Radar dome around the blue car (Part 1) */
+.radar-dome {
+  position: absolute;
+  inset: -30% -15%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 20;
+  mix-blend-mode: screen;
+}
+.radar-dome-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 200, 255, 0.45);
+  box-shadow: inset 0 0 40px rgba(60, 150, 255, 0.25), 0 0 30px rgba(60, 150, 255, 0.2);
+}
+.radar-dome-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, rgba(120, 210, 255, 0.5) 352deg, rgba(190, 235, 255, 0.9) 360deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 30%, #000 100%);
+  mask-image: radial-gradient(closest-side, transparent 30%, #000 100%);
+  animation: dome-spin 4s linear infinite;
+}
+.radar-dome-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(140, 215, 255, 0.7);
+  opacity: 0;
+  animation: dome-ring 3.2s ease-out infinite;
+}
+@keyframes dome-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes dome-ring {
+  0% { transform: scale(0.55); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .radar-dome-sweep, .radar-dome-ring { animation: none; }
+}
