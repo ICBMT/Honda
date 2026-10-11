@@ -6,14 +6,6 @@ import { SceneFor } from './scenes'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// Radar points on the blue car, as fractions of the car cut-out (1294 x 691).
-const SENSORS = [
-  { x: 0.245, y: 0.667, label: 'FRONT RADAR' },
-  { x: 0.42, y: 0.83, label: '' },
-  { x: 0.62, y: 0.4, label: '' },
-  { x: 0.81, y: 0.56, label: 'REAR RADAR' },
-]
-
 // Night skyline silhouettes, drawn in SVG so they stay sharp at any size.
 // Each tower: x, width, height (as % of the panel height), and whether it has a lit top.
 const TOWERS = [
