@@ -55,23 +55,12 @@ const HOTSPOTS: { x: string; y: string; side: Side }[] = [
 ]
 
 const DETAIL_POS: Record<Side, string> = {
-  top: 'bottom-full mb-3 left-1/2 -translate-x-1/2',
+  top: 'top-full mt-3 left-1/2 -translate-x-1/2',
   bottom: 'bottom-full mb-3 left-1/2 -translate-x-1/2',
-  left: 'bottom-full mb-3 left-0',
-  right: 'bottom-full mb-3 right-0',
+  left: 'left-full ml-3 top-1/2 -translate-y-1/2',
+  right: 'right-full mr-3 top-1/2 -translate-y-1/2',
 }
 
-// Red warning triangle shown over the radar when the pointer is on the scan area.
-function HazardSign({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 90" className={className} aria-hidden="true">
-      <path d="M50 4 L96 84 L4 84 Z" fill="#d7262e" stroke="#b81d24" strokeWidth="5" strokeLinejoin="round" />
-      <path d="M50 17 L83 74 L17 74 Z" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinejoin="round" />
-      <rect x="45" y="32" width="10" height="28" rx="3" fill="#ffffff" />
-      <circle cx="50" cy="69" r="5.5" fill="#ffffff" />
-    </svg>
-  )
-}
 
 export default function Sensing() {
   const wrap = useRef<HTMLElement>(null)
@@ -183,7 +172,6 @@ export default function Sensing() {
                   <span className="radar-dome-ring" style={{ animationDelay: '1.07s' }} />
                   <span className="radar-dome-ring" style={{ animationDelay: '2.13s' }} />
                 </div>
-                <HazardSign className="radar-hazard" />
               </div>
             {/* The six systems around the car: hover a label to read about it */}
             {FEATURES.map((f, i) => {
