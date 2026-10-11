@@ -1,17 +1,43 @@
 // Animated re-creations of the six printed Honda SENSING illustrations.
-// Every scene is one SVG in a 800 x 300 space, so it scales cleanly to any card.
+// Every scene is one SVG in an 800 x 300 space, built from the generated
+// car cut-outs, so it scales cleanly to any card.
 import type { FeatureCode } from './features'
 
 const C = '/sensing/cars/'
 const ROAD = '#3a3f48'
+const ROAD_DARK = '#2b2f36'
 const EDGE = '#f2b632'
 
+// Yellow and white hazard stripes along the top and bottom of the road,
+// as in the printed panels.
 function HazardEdges({ top, bottom }: { top: number; bottom: number }) {
   return (
     <>
-      <line x1="0" x2="800" y1={top} y2={top} stroke={EDGE} strokeWidth="6" strokeDasharray="24 12" />
-      <line x1="0" x2="800" y1={bottom} y2={bottom} stroke={EDGE} strokeWidth="6" strokeDasharray="24 12" />
+      {[top, bottom].map((y) => (
+        <g key={y}>
+          <line x1="0" x2="800" y1={y} y2={y} stroke="#f4f6f8" strokeWidth="7" />
+          <line x1="0" x2="800" y1={y} y2={y} stroke={EDGE} strokeWidth="7" strokeDasharray="22 22" />
+        </g>
+      ))}
     </>
+  )
+}
+
+// Soft contact shadow under a car so it sits on the road.
+function Shadow({ cx, cy, rx }: { cx: number; cy: number; rx: number }) {
+  return <ellipse cx={cx} cy={cy} rx={rx} ry={rx * 0.07} fill="rgba(0,0,0,0.45)" />
+}
+
+function Wheel({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <g className="spin-slow">
+        <circle r="26" fill="#111" />
+        <circle r="16" fill="none" stroke="#d6dbe3" strokeWidth="5" />
+        <line x1="-16" x2="16" y1="0" y2="0" stroke="#d6dbe3" strokeWidth="5" />
+        <line x1="0" x2="0" y1="0" y2="16" stroke="#d6dbe3" strokeWidth="5" />
+      </g>
+    </g>
   )
 }
 
@@ -27,6 +53,8 @@ export function CmbsScene() {
       <rect width="800" height="300" fill="url(#cmbs-sky)" />
       <rect y="150" width="800" height="150" fill={ROAD} />
       <line x1="0" x2="800" y1="222" y2="222" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
+      <Shadow cx={170} cy={200} rx={130} />
+      <Shadow cx={660} cy={196} rx={120} />
       <image href={C + 'white_side.webp'} x="540" y="112" width="240" height="80" />
       <g className="cmbs-ego">
         <image href={C + 'red_side.webp'} x="40" y="112" width="250" height="86" />
@@ -57,14 +85,16 @@ export function AccScene() {
       <line x1="0" x2="800" y1="100" y2="100" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
       <line x1="0" x2="800" y1="200" y2="200" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
       {/* Top lane: car at 120 km/h */}
+      <Shadow cx={205} cy={88} rx={52} />
       <image href={C + 'red_top.webp'} x="150" y="30" width="110" height="55" />
-      <text x="205" y="104" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 120 km/h</text>
+      <text x="205" y="124" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 120 km/h</text>
       {/* Bottom lane: ego car at 80 km/h with the radar cone */}
       <polygon points="292,165 380,108 380,222" fill="url(#acc-cone)" className="cone-pulse" />
-      <path d="M330 165 m0 0 a0 0 0 0 0 0 0" />
       <path d="M320 165 A46 46 0 0 1 320 118" fill="none" stroke="#dff6ff" strokeWidth="3" className="cone-pulse" />
       <path d="M340 165 A70 70 0 0 1 340 96" fill="none" stroke="#dff6ff" strokeWidth="3" className="cone-pulse" />
+      <Shadow cx={230} cy={195} rx={55} />
       <image href={C + 'red_top.webp'} x="170" y="137" width="120" height="58" />
+      <Shadow cx={590} cy={195} rx={55} />
       <image href={C + 'grey_top.webp'} x="530" y="137" width="120" height="55" />
       <text x="230" y="222" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 80 km/h</text>
       <text x="590" y="222" textAnchor="middle" fontSize="16" fill="#fff" fontFamily="serif">@ 80 km/h</text>
@@ -92,12 +122,15 @@ export function LcdnScene() {
       </g>
       <rect y="190" width="800" height="110" fill={ROAD} />
       <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
+      {/* Traffic light: green blinks when the lead car is away */}
       <rect x="682" y="50" width="36" height="92" rx="6" fill="#222" />
       <circle cx="700" cy="72" r="8" fill="#2d3238" />
       <circle cx="700" cy="96" r="8" fill="#2d3238" />
       <circle cx="700" cy="120" r="8" fill="#33e07a" className="light-blink" />
+      <Shadow cx={185} cy={262} rx={150} />
       <image href={C + 'red_side.webp'} x="30" y="150" width="310" height="106" />
       <g className="lead-depart">
+        <Shadow cx={575} cy={256} rx={145} />
         <image href={C + 'white_side.webp'} x="430" y="152" width="290" height="98" />
       </g>
     </svg>
@@ -115,25 +148,12 @@ export function LkasScene() {
       <line x1="0" x2="800" y1="150" y2="150" stroke="#fff" strokeOpacity="0.45" strokeWidth="3" strokeDasharray="36 22" className="lane-x" />
       <path d={path} fill="none" stroke="#f4f7fb" strokeWidth="6" strokeLinecap="round" pathLength="1" className="path-draw" />
       <g>
+        <Shadow cx={0} cy={6} rx={56} />
         <image href={C + 'red_top.webp'} x="-60" y="-29" width="120" height="58" />
         <animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path={path} />
       </g>
-      <g transform="translate(640 210)" >
-        <g className="spin-slow">
-          <circle r="26" fill="#111" />
-          <circle r="16" fill="none" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="-16" x2="16" y1="0" y2="0" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="0" x2="0" y1="0" y2="16" stroke="#d6dbe3" strokeWidth="5" />
-        </g>
-      </g>
-      <g transform="translate(700 210)">
-        <g className="spin-slow">
-          <circle r="26" fill="#111" />
-          <circle r="16" fill="none" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="-16" x2="16" y1="0" y2="0" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="0" x2="0" y1="0" y2="16" stroke="#d6dbe3" strokeWidth="5" />
-        </g>
-      </g>
+      <g transform="translate(640 210)"><Wheel x={0} y={0} /></g>
+      <g transform="translate(700 210)"><Wheel x={0} y={0} /></g>
     </svg>
   )
 }
@@ -152,25 +172,12 @@ export function RdmScene() {
       <circle cx="300" cy="120" r="7" fill="#e0202a" className="fx-pulse-dot" />
       <circle cx="420" cy="80" r="7" fill="#e0202a" className="fx-pulse-dot" />
       <g>
+        <Shadow cx={0} cy={6} rx={56} />
         <image href={C + 'red_top.webp'} x="-60" y="-29" width="120" height="58" />
         <animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path={path} />
       </g>
-      <g transform="translate(640 210)">
-        <g className="spin-slow">
-          <circle r="26" fill="#111" />
-          <circle r="16" fill="none" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="-16" x2="16" y1="0" y2="0" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="0" x2="0" y1="0" y2="16" stroke="#d6dbe3" strokeWidth="5" />
-        </g>
-      </g>
-      <g transform="translate(700 210)">
-        <g className="spin-slow">
-          <circle r="26" fill="#111" />
-          <circle r="16" fill="none" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="-16" x2="16" y1="0" y2="0" stroke="#d6dbe3" strokeWidth="5" />
-          <line x1="0" x2="0" y1="0" y2="16" stroke="#d6dbe3" strokeWidth="5" />
-        </g>
-      </g>
+      <g transform="translate(640 210)"><Wheel x={0} y={0} /></g>
+      <g transform="translate(700 210)"><Wheel x={0} y={0} /></g>
     </svg>
   )
 }
@@ -192,10 +199,13 @@ export function AhbScene() {
     <svg viewBox="0 0 800 300" className="block h-full w-full" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="300" fill={ROAD} />
       <HazardEdges top={6} bottom={294} />
-      <line x1="0" x2="800" y1="100" y2="100" stroke="#fff" strokeOpacity="0.6" strokeWidth="3" strokeDasharray="30 20" />
+      <line x1="0" x2="800" y1="100" y2="100" stroke="#fff" strokeOpacity="0.6" strokeWidth="3" strokeDasharray="30 20" className="lane-x" />
       <line x1="0" x2="800" y1="200" y2="200" stroke="#fff" strokeWidth="4" />
+      <Shadow cx={300} cy={80} rx={52} />
       <image href={C + 'red_top.webp'} x="240" y="22" width="120" height="58" />
+      <Shadow cx={300} cy={208} rx={52} />
       <image href={C + 'red_top.webp'} x="240" y="150" width="120" height="58" />
+      <Shadow cx={620} cy={208} rx={52} />
       <image href={C + 'grey_top.webp'} x="560" y="150" width="120" height="55" />
       <BeamIcon x={300} y={108} className="blink-a" />
       <BeamIcon x={300} y={248} className="blink-b" />
