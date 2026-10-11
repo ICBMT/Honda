@@ -42,6 +42,16 @@ function Skyline() {
   )
 }
 
+// Where each system label sits around the car (top row above, bottom row below).
+const HOTSPOTS = [
+  { x: '18%', y: '12%', above: false },
+  { x: '50%', y: '12%', above: false },
+  { x: '82%', y: '12%', above: false },
+  { x: '18%', y: '86%', above: true },
+  { x: '50%', y: '86%', above: true },
+  { x: '82%', y: '86%', above: true },
+]
+
 export default function Sensing() {
   const wrap = useRef<HTMLElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -153,6 +163,29 @@ export default function Sensing() {
                   <span className="radar-dome-ring" style={{ animationDelay: '2.13s' }} />
                 </div>
               </div>
+            {/* The six systems around the car: hover a label to read about it */}
+            {FEATURES.map((f, i) => {
+              const pos = HOTSPOTS[i]
+              return (
+                <div
+                  key={f.code}
+                  className="group absolute z-30 -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: pos.x, top: pos.y }}
+                >
+                  <span className="block cursor-default rounded-full border border-cyan-300/40 bg-[#0a1420]/80 px-3 py-1 text-[clamp(10px,0.9vw,13px)] font-semibold tracking-[0.2em] text-cyan-100 backdrop-blur transition-colors duration-300 group-hover:border-amber-300 group-hover:text-amber-300">
+                    {f.code}
+                  </span>
+                  <div
+                    className={`pointer-events-none absolute left-1/2 w-[clamp(200px,20vw,280px)] -translate-x-1/2 rounded-md border border-white/10 bg-[#0b0f16]/95 p-3 text-left opacity-0 shadow-xl transition duration-300 group-hover:opacity-100 ${
+                      pos.above ? 'bottom-full mb-2' : 'top-full mt-2'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-amber-300">{f.title}</p>
+                    <p className="mt-1 text-xs leading-snug text-white/70">{f.text}</p>
+                  </div>
+                </div>
+              )
+            })}
             </div>
 
             {/* Right panel: title block, as in the print */}
