@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FEATURES } from './features'
