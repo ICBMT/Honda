@@ -19,20 +19,25 @@ function Skyline() {
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
       <defs>
         <linearGradient id="sky-fade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#060a14" />
-          <stop offset="0.6" stopColor="#0a1a33" />
-          <stop offset="1" stopColor="#0b2a5c" />
+          <stop offset="0" stopColor="#05070b" />
+          <stop offset="0.55" stopColor="#090e18" />
+          <stop offset="1" stopColor="#04060a" />
         </linearGradient>
+        <filter id="sky-blur" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur stdDeviation="0.35" />
+        </filter>
       </defs>
       <rect width="100" height="100" fill="url(#sky-fade)" />
-      {TOWERS.map(([x, w, h], i) => (
-        <g key={i}>
-          <rect x={x} y={100 - h} width={w} height={h} fill="#0a1424" />
-          {Array.from({ length: Math.floor(h / 6) }, (_, r) => (
-            <rect key={r} x={x + w * 0.3} y={100 - h + 3 + r * 5} width={w * 0.4} height={1.2} fill="#7fc2ff" opacity={0.25 + ((i + r) % 4) * 0.12} />
-          ))}
-        </g>
-      ))}
+      <g filter="url(#sky-blur)" fill="#131c2d" opacity="0.85">
+        {TOWERS.map(([x, w, h], i) => (
+          <rect key={i} x={x} y={100 - h * 0.8} width={w} height={h * 0.8} />
+        ))}
+      </g>
+      <g fill="#9fd6ff">
+        {TOWERS.filter((_, i) => i % 3 === 0).map(([x, w, h], i) => (
+          <rect key={i} x={x + w * 0.4} y={100 - h * 0.8 + 2} width={0.5} height={0.5} opacity="0.45" />
+        ))}
+      </g>
     </svg>
   )
 }
