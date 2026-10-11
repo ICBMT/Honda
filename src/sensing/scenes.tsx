@@ -120,6 +120,11 @@ export function LcdnScene() {
         <rect x="430" y="70" width="120" height="110" />
         <rect x="570" y="100" width="90" height="80" />
       </g>
+      {/* Traffic light: green blinks when the lead car is away */}
+      <rect x="748" y="50" width="36" height="92" rx="6" fill="#222" />
+      <circle cx="766" cy="72" r="8" fill="#2d3238" />
+      <circle cx="766" cy="96" r="8" fill="#2d3238" />
+      <circle cx="766" cy="120" r="8" fill="#33e07a" className="light-blink" />
       {/* Lead car sits in the far lane: drawn before the near road so the road edge covers its lower part */}
       <g className="lead-depart">
         <Shadow cx={575} cy={214} rx={145} />
@@ -127,11 +132,6 @@ export function LcdnScene() {
       </g>
       <rect y="190" width="800" height="110" fill={ROAD} />
       <line x1="0" x2="800" y1="246" y2="246" stroke="#fff" strokeWidth="4" strokeDasharray="36 22" className="lane-x" />
-      {/* Traffic light: green blinks when the lead car is away */}
-      <rect x="682" y="50" width="36" height="92" rx="6" fill="#222" />
-      <circle cx="700" cy="72" r="8" fill="#2d3238" />
-      <circle cx="700" cy="96" r="8" fill="#2d3238" />
-      <circle cx="700" cy="120" r="8" fill="#33e07a" className="light-blink" />
       <Shadow cx={185} cy={262} rx={150} />
       <image href={C + 'red_side.webp'} x="30" y="150" width="310" height="106" />
     </svg>
