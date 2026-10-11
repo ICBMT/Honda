@@ -42,15 +42,24 @@ function Skyline() {
   )
 }
 
-// Where each system label sits around the car (top row above, bottom row below).
-const HOTSPOTS = [
-  { x: '18%', y: '12%', above: false },
-  { x: '50%', y: '12%', above: false },
-  { x: '82%', y: '12%', above: false },
-  { x: '18%', y: '86%', above: true },
-  { x: '50%', y: '86%', above: true },
-  { x: '82%', y: '86%', above: true },
+// Labels sit on an ellipse around the radar dome (centre 52%, 58% of the left panel).
+// Order runs clockwise from upper-left so the six systems read in sequence.
+type Side = 'top' | 'bottom' | 'left' | 'right'
+const HOTSPOTS: { x: string; y: string; side: Side }[] = [
+  { x: '14%', y: '42%', side: 'left' },
+  { x: '52%', y: '24%', side: 'top' },
+  { x: '90%', y: '42%', side: 'right' },
+  { x: '90%', y: '74%', side: 'right' },
+  { x: '52%', y: '92%', side: 'bottom' },
+  { x: '14%', y: '74%', side: 'left' },
 ]
+
+const DETAIL_POS: Record<Side, string> = {
+  top: 'bottom-full mb-3 left-1/2 -translate-x-1/2',
+  bottom: 'top-full mt-3 left-1/2 -translate-x-1/2',
+  left: 'left-full ml-3 top-1/2 -translate-y-1/2',
+  right: 'right-full mr-3 top-1/2 -translate-y-1/2',
+}
 
 export default function Sensing() {
   const wrap = useRef<HTMLElement>(null)
