@@ -185,9 +185,7 @@ export default function Sensing() {
                     {f.code}
                   </span>
                   <div
-                    className={`pointer-events-none absolute left-1/2 w-[clamp(200px,20vw,280px)] -translate-x-1/2 rounded-md border border-white/10 bg-[#0b0f16]/95 p-3 text-left opacity-0 shadow-xl transition duration-300 group-hover:opacity-100 ${
-                      pos.above ? 'bottom-full mb-2' : 'top-full mt-2'
-                    }`}
+                    className={`pointer-events-none absolute w-[clamp(200px,20vw,280px)] rounded-md border border-white/10 bg-[#0b0f16]/95 p-3 text-left opacity-0 shadow-xl transition duration-300 group-hover:opacity-100 ${DETAIL_POS[pos.side]}`}
                   >
                     <p className="text-sm font-semibold text-amber-300">{f.title}</p>
                     <p className="mt-1 text-xs leading-snug text-white/70">{f.text}</p>
