@@ -118,12 +118,12 @@
   cursor: none;
 }
 .radar-dome-edge, .radar-dome-ring, .radar-dome-sweep { transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease; }
-.radar-dome:hover .radar-dome-edge {
+.radar-dome[data-hot="true"] .radar-dome-edge {
   border-color: rgba(255, 90, 90, 0.7);
   box-shadow: inset 0 0 40px rgba(255, 60, 60, 0.25), 0 0 30px rgba(255, 60, 60, 0.25);
 }
-.radar-dome:hover .radar-dome-ring { border-color: rgba(255, 110, 110, 0.85); }
-.radar-dome:hover .radar-dome-sweep {
+.radar-dome[data-hot="true"] .radar-dome-ring { border-color: rgba(255, 110, 110, 0.85); }
+.radar-dome[data-hot="true"] .radar-dome-sweep {
   background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, rgba(255, 70, 70, 0.5) 352deg, rgba(255, 150, 150, 0.95) 360deg);
 }
 

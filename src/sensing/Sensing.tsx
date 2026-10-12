@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -81,13 +81,40 @@ export default function Sensing() {
     if (carImg.current) carImg.current.style.transform = "perspective(1400px) rotateX(0deg) rotateY(0deg)"
   }
 
-  // The hazard sign follows the pointer while it is over the radar scan area.
-  const showSign = (on: boolean) => {
-    if (signRef.current) signRef.current.style.opacity = on ? '1' : '0'
-  }
-  const moveSign = (e: React.PointerEvent) => {
-    if (signRef.current) signRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`
-  }
+  // The hazard sign and the red dome follow the pointer's real position: a hit test runs on every
+  // pointer move and on scroll, so they clear when the page scrolls the dome away from a still cursor.
+  const domeRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const pointer = { x: -1, y: -1, inside: false }
+    let frame = 0
+    const sync = () => {
+      frame = 0
+      const dome = domeRef.current
+      const sign = signRef.current
+      let hot = false
+      if (dome && pointer.inside) {
+        const hit = document.elementFromPoint(pointer.x, pointer.y)
+        hot = !!hit && dome.contains(hit)
+      }
+      if (dome) dome.dataset.hot = hot ? 'true' : 'false'
+      if (sign) {
+        sign.style.opacity = hot ? '1' : '0'
+        if (hot) sign.style.transform = `translate(${pointer.x}px, ${pointer.y}px) translate(-50%, -50%)`
+      }
+    }
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(sync) }
+    const onMove = (e: PointerEvent) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true; schedule() }
+    const onLeave = () => { pointer.inside = false; schedule() }
+    window.addEventListener('pointermove', onMove, { passive: true })
+    document.documentElement.addEventListener('mouseleave', onLeave)
+    window.addEventListener('scroll', schedule, { capture: true, passive: true })
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      document.documentElement.removeEventListener('mouseleave', onLeave)
+      window.removeEventListener('scroll', schedule, { capture: true })
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     const el = wrap.current!
@@ -213,7 +240,7 @@ export default function Sensing() {
                 />
 
                 {/* Radar dome: rotating sweep and expanding rings around the car */}
-                <div data-intro="dome" className="radar-dome" aria-hidden="true" onPointerEnter={() => showSign(true)} onPointerLeave={() => showSign(false)} onPointerMove={moveSign}>
+                <div ref={domeRef} data-intro="dome" className="radar-dome" aria-hidden="true">
                   <span className="radar-dome-edge" />
                   <span className="radar-dome-sweep" />
                   <span className="radar-dome-ring" style={{ animationDelay: '0s' }} />
