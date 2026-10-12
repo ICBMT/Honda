@@ -105,7 +105,7 @@ export default function Hero() {
   }, [])
 
   return (
-    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid place-items-center">
+    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid grid-cols-[minmax(0,1fr)] place-items-center">
       <div
         data-stage
         className="relative overflow-hidden"
