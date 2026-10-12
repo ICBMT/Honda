@@ -202,6 +202,16 @@ export default function Sensing() {
                   draggable={false}
                 />
 
+                {/* Soft floor reflection of the car */}
+                <img
+                  src="/sensing/cars/blue_front.webp"
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  className="pointer-events-none absolute inset-x-0 top-full block w-full select-none opacity-[0.16]"
+                  style={{ transform: 'scaleY(-1)', transformOrigin: 'top', maskImage: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent 55%)', WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent 55%)' }}
+                />
+
                 {/* Radar dome: rotating sweep and expanding rings around the car */}
                 <div data-intro="dome" className="radar-dome" aria-hidden="true" onPointerEnter={() => showSign(true)} onPointerLeave={() => showSign(false)} onPointerMove={moveSign}>
                   <span className="radar-dome-edge" />

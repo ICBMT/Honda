@@ -63,9 +63,9 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, rgba(120, 210, 255, 0.5) 352deg, rgba(190, 235, 255, 0.9) 360deg);
-  -webkit-mask-image: radial-gradient(closest-side, transparent 30%, #000 100%);
-  mask-image: radial-gradient(closest-side, transparent 30%, #000 100%);
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 230deg, rgba(120, 210, 255, 0.04) 290deg, rgba(120, 210, 255, 0.16) 340deg, rgba(190, 235, 255, 0.42) 358deg, rgba(220, 245, 255, 0.6) 360deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 35%, #000 92%, transparent 100%);
+  mask-image: radial-gradient(closest-side, transparent 35%, #000 92%, transparent 100%);
   animation: dome-spin 4s linear infinite;
 }
 .radar-dome-ring {
