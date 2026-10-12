@@ -5,7 +5,7 @@ import Sensing from './sensing/Sensing'
 import SensingMobile from './sensing/SensingMobile'
 import { startSmoothScroll } from './lib/smooth'
 
-const PHONE_QUERY = '(max-width: 767px)'
+const PHONE_QUERY = '(max-width: 767px), (orientation: portrait) and (max-width: 1100px)'
 
 // Phones get the portrait hero and the swipe carousel; larger screens keep the desktop layouts.
 function useIsPhone() {
