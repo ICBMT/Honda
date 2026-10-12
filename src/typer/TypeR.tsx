@@ -16,9 +16,10 @@ const CAR_RE = /body_white_ext|tire|tyre|headlight/i
 const TYRE_RE = /tire|tyre/i
 const TARGET = new THREE.Vector3(0, 0.7, 0)
 // World positions once the car is centred at the origin, nose toward +X, right-hand side toward +Z.
-const DOOR_OUT = new THREE.Vector3(-0.55, 1.05, 2.5)   // outside, beside the rear door
-const DOOR_IN = new THREE.Vector3(-0.55, 1.05, 0.7)    // through the open rear door, at the threshold
+const BEHIND = new THREE.Vector3(-4.3, 1.25, 0.3)      // behind the car, on its centre line
+const REAR_GLASS = new THREE.Vector3(-1.4, 1.1, 0.2)   // just inside the rear glass
 const CABIN = new THREE.Vector3(-0.15, 1.02, 0.2)      // seated, between the front seats and dash
+const CAR_FOCUS = new THREE.Vector3(0.2, 0.9, 0.2)     // the camera keeps the car in view while it enters
 const PAINTS = [
   { name: 'Championship White', hex: '#f2f2ef' },
   { name: 'Rally Red', hex: '#c8102e' },
@@ -131,14 +132,12 @@ export default function TypeR() {
     fly: (i: number) => void
     back: () => void
     free: () => void
-    doors: () => void
     paint: (i: number) => void
   } | null>(null)
   const [ready, setReady] = useState(false)
   const [paint, setPaint] = useState(0)
   const [mode, setModeUI] = useState<Mode>('scroll')
   const [focus, setFocus] = useState<string | null>(null)
-  const [doorsOpen, setDoorsOpen] = useState(false)
 
   useEffect(() => {
     const el = root.current!
@@ -207,22 +206,13 @@ export default function TypeR() {
 
     let bodyMat: THREE.MeshStandardMaterial | null = null
     const wheels: THREE.Mesh[] = []
-    const doorPivots: { pivot: THREE.Group; sign: number; open: number }[] = []
-    const doorMats: THREE.MeshStandardMaterial[] = []
-    const rigInv = new THREE.Matrix4()
-    const doorU = {
-      uDoorOpen: { value: 0 },
-      uDoorMin: { value: new THREE.Vector3() },
-      uDoorMax: { value: new THREE.Vector3() },
-      uRigInv: { value: rigInv },
-    }
     const anchorBox = new THREE.Box3()
     let loaded = false
     let paintFn: (i: number) => void = () => {}
 
     // Scroll-driven state. The timeline writes into this; the frame loop reads it.
     const state = {
-      carX: -7, carRotY: 0, spin: 0, door: 0,
+      carX: -7, carRotY: 0, spin: 0,
       camX: 0.4, camY: 1.3, camZ: 9.5, lookX: 0, lookY: 1.5, lookZ: 0,
       inside: 0, yaw: 0, pitch: 0, pointerX: 0, pointerY: 0,
     }
@@ -309,98 +299,6 @@ export default function TypeR() {
         splitWheelParts(m, seeds, R, 0.16).forEach((w) => { rig.add(w); wheels.push(w) })
       })
 
-      // Doors: the GLB has no separate door meshes. Each door panel is cut out of the body shell by its outline,
-      // then hinged on its front edge. Only triangles fully inside an outline move, so the cut stays clean.
-      // Doors: the body stays whole. A box-shaped opening is cut in the body shader while the door is open, and a copy
-      // of the door panel swings on its hinge. Nothing is pulled apart, so the car never tears or peels.
-      const bb = boundsOf(model, CAR_RE)
-      const bc = bb.getCenter(new THREE.Vector3())
-      const halfW = bb.max.z - bc.z
-      const hingeX = bc.x - 0.05
-      const doorMin = new THREE.Vector3(bc.x - 1.15, bb.min.y + 0.36, bc.z + halfW * 0.7)
-      const doorMax = new THREE.Vector3(bc.x - 0.05, bb.min.y + 0.82, bc.z + halfW * 1.3)
-      doorU.uDoorMin.value.copy(doorMin)
-      doorU.uDoorMax.value.copy(doorMax)
-      const inDoor = (x: number, y: number, z: number) => x > doorMin.x && x < doorMax.x && y > doorMin.y && y < doorMax.y && z > doorMin.z && z < doorMax.z
-      const bodyMeshes: THREE.Mesh[] = []
-      model.traverse((o) => {
-        const m = o as THREE.Mesh
-        if (!m.isMesh) return
-        const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.Material
-        if (/body_white_ext/i.test(mat.name || '')) bodyMeshes.push(m)
-      })
-
-      // Copy the door panel's triangles (the originals stay put).
-      const dP: number[] = []
-      const dN: number[] = []
-      const dU: number[] = []
-      const N = new THREE.Vector3()
-      bodyMeshes.forEach((src) => {
-        const geo = src.geometry as THREE.BufferGeometry
-        const pos = geo.attributes.position as THREE.BufferAttribute
-        const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
-        const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
-        const idx = geo.index
-        const triCount = idx ? idx.count / 3 : pos.count / 3
-        const nm = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
-        for (let t = 0; t < triCount; t++) {
-          const ids = [0, 1, 2].map((j) => (idx ? idx.getX(t * 3 + j) : t * 3 + j))
-          const world = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
-          // Any triangle touching the door box is copied; the copy is clipped to the box in its own shader.
-          const touches = world.some((w) => inDoor(w.x, w.y, w.z))
-          if (!touches) continue
-          ids.forEach((i, j) => {
-            dP.push(world[j].x, world[j].y, world[j].z)
-            if (nor) { N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize(); dN.push(N.x, N.y, N.z) }
-            if (uv) dU.push(uv.getX(i), uv.getY(i))
-          })
-        }
-      })
-      const pivotPos = new THREE.Vector3(hingeX, 0, bc.z + halfW * 0.92)
-      const doorGeo = new THREE.BufferGeometry()
-      doorGeo.setAttribute('position', new THREE.Float32BufferAttribute(dP, 3))
-      if (dN.length) doorGeo.setAttribute('normal', new THREE.Float32BufferAttribute(dN, 3))
-      if (dU.length) doorGeo.setAttribute('uv', new THREE.Float32BufferAttribute(dU, 2))
-      doorGeo.translate(-pivotPos.x, -pivotPos.y, -pivotPos.z)
-      const doorPivot = new THREE.Group()
-      doorPivot.position.copy(pivotPos)
-      doorPivot.visible = false
-      if (dP.length) {
-        const doorMat = (bodyMat as THREE.MeshStandardMaterial).clone()
-        doorMat.onBeforeCompile = (sh) => {
-          Object.assign(sh.uniforms, doorU, { uPivot: { value: pivotPos } })
-          sh.vertexShader = sh.vertexShader
-            .replace('#include <common>', '#include <common>\nvarying vec3 vLocal;\nuniform vec3 uPivot;')
-            .replace('#include <project_vertex>', '#include <project_vertex>\nvLocal = position + uPivot;')
-          sh.fragmentShader = sh.fragmentShader
-            .replace('#include <common>', '#include <common>\nvarying vec3 vLocal;\nuniform vec3 uDoorMin;\nuniform vec3 uDoorMax;')
-            .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (any(lessThan(vLocal, uDoorMin)) || any(greaterThan(vLocal, uDoorMax))) discard;')
-        }
-        doorMat.customProgramCacheKey = () => 'door-clip'
-        doorMats.push(doorMat)
-        const doorMesh = new THREE.Mesh(doorGeo, doorMat)
-        doorMesh.castShadow = true
-        doorMesh.receiveShadow = true
-        doorPivot.add(doorMesh)
-      }
-      rig.add(doorPivot)
-      doorPivots.push({ pivot: doorPivot, sign: 1, open: 0.95 })
-
-      // The body shader drops fragments inside the door box while the door is open. Rig-local space keeps the hole on the car.
-      if (bodyMat) {
-        const body = bodyMat as THREE.MeshStandardMaterial
-        body.onBeforeCompile = (sh) => {
-          Object.assign(sh.uniforms, doorU)
-          sh.vertexShader = sh.vertexShader
-            .replace('#include <common>', '#include <common>\nvarying vec3 vRigPos;\nuniform mat4 uRigInv;')
-            .replace('#include <project_vertex>', '#include <project_vertex>\nvRigPos = (uRigInv * modelMatrix * vec4(transformed, 1.0)).xyz;')
-          sh.fragmentShader = sh.fragmentShader
-            .replace('#include <common>', '#include <common>\nvarying vec3 vRigPos;\nuniform float uDoorOpen;\nuniform vec3 uDoorMin;\nuniform vec3 uDoorMax;')
-            .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (uDoorOpen > 0.01 && all(greaterThan(vRigPos, uDoorMin)) && all(lessThan(vRigPos, uDoorMax))) discard;')
-        }
-        body.customProgramCacheKey = () => 'body-door-hole'
-      }
-
       // Hotspot boxes are measured here, while the rig is still at the origin.
       anchorBox.copy(boundsOf(model, CAR_RE))
 
@@ -408,30 +306,30 @@ export default function TypeR() {
         if (!bodyMat) return
         const col = new THREE.Color(PAINTS[i].hex)
         gsap.to(bodyMat.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' })
-        doorMats.forEach((m) => gsap.to(m.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' }))
       }
       loaded = true
       setReady(true)
     })
 
     // The journey, scrubbed by scroll:
-    // roll in, side pass, slide to the rear door, step through it into the cabin, look around, step back out through the same door, finale.
+    // roll in, side pass, glide in from behind through the rear glass, look around the cabin, glide back out, finale.
     const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
+    const look = (x: number, y: number, z: number) => ({ lookX: x, lookY: y, lookZ: z })
     tl.to(state, { carX: 0, spin: 1, duration: 0.2, ease: 'power3.out' }, 0)
       .to(state, { spin: 0, duration: 0.05 }, 0.2)
-      .to(state, { camX: -2.4, camY: 1.3, camZ: 4.6, lookX: 0, lookY: 1.1, lookZ: 0, duration: 0.16 }, 0.2)
-      .to(state, { door: 1, duration: 0.08, ease: 'power2.inOut' }, 0.36)
-      .to(state, { camX: DOOR_OUT.x, camY: DOOR_OUT.y, camZ: DOOR_OUT.z, lookX: -0.3, lookY: 1.0, lookZ: 0, duration: 0.08 }, 0.42)
-      .to(state, { camX: DOOR_IN.x, camY: DOOR_IN.y, camZ: DOOR_IN.z, lookX: 0.6, lookY: 1.0, lookZ: 0, duration: 0.08 }, 0.5)
-      .to(state, { camX: CABIN.x, camY: CABIN.y, camZ: CABIN.z, duration: 0.06 }, 0.56)
-      .set(state, { inside: 1, yaw: 0.26, pitch: 0 }, 0.56)
+      .to(state, { camX: -3.4, camY: 1.3, camZ: 2.4, ...look(0.2, 1.0, 0.2), duration: 0.16 }, 0.2)
+      // Glide in from behind the car: no cut, the camera just moves through the rear glass.
+      .to(state, { camX: BEHIND.x, camY: BEHIND.y, camZ: BEHIND.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.1 }, 0.36)
+      .to(state, { camX: REAR_GLASS.x, camY: REAR_GLASS.y, camZ: REAR_GLASS.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.1 }, 0.46)
+      .to(state, { camX: CABIN.x, camY: CABIN.y, camZ: CABIN.z, ...look(CABIN.x + 2, CABIN.y - 0.05, CABIN.z), duration: 0.08 }, 0.56)
+      .set(state, { inside: 1, yaw: 0, pitch: 0 }, 0.64)
+      // Glide back out the same way.
       .set(state, { inside: 0 }, 0.8)
-      .to(state, { camX: DOOR_IN.x, camY: DOOR_IN.y, camZ: DOOR_IN.z, duration: 0.06 }, 0.8)
-      .to(state, { camX: DOOR_OUT.x, camY: DOOR_OUT.y, camZ: DOOR_OUT.z, lookX: -0.3, lookY: 1.0, lookZ: 0, duration: 0.07 }, 0.86)
-      .to(state, { door: 0, duration: 0.08, ease: 'power2.inOut' }, 0.88)
-      .to(state, { camX: 0, camY: 1.2, camZ: 9.5, lookX: 0, lookY: 1.9, lookZ: 0, carRotY: Math.PI / 4, duration: 0.12 }, 0.92)
-      .to(state, { spin: 0.35, duration: 0.05 }, 0.92)
-      .to(state, { spin: 0, duration: 0.05 }, 0.98)
+      .to(state, { camX: REAR_GLASS.x, camY: REAR_GLASS.y, camZ: REAR_GLASS.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.08 }, 0.8)
+      .to(state, { camX: BEHIND.x, camY: BEHIND.y, camZ: BEHIND.z, duration: 0.08 }, 0.88)
+      .to(state, { camX: 0, camY: 1.2, camZ: 9.5, ...look(0, 1.9, 0), carRotY: Math.PI / 4, duration: 0.12 }, 0.94)
+      .to(state, { spin: 0.35, duration: 0.05 }, 0.94)
+      .to(state, { spin: 0, duration: 0.05 }, 0.99)
     const trigger = ScrollTrigger.create({ trigger: el, start: 'top top', end: 'bottom bottom', scrub: 0.6, animation: tl })
 
     const onPointer = (e: PointerEvent) => {
@@ -494,15 +392,16 @@ export default function TypeR() {
       const p = { t: 0 }
       const target = new THREE.Vector3()
       const end = new THREE.Vector3()
-      const doorPt = DOOR_IN.clone().applyMatrix4(rig.matrixWorld)
-      const cabinPt = CABIN.clone().applyMatrix4(rig.matrixWorld)
+      const pathPts = [BEHIND, REAR_GLASS, CABIN].map((q) => q.clone().applyMatrix4(rig.matrixWorld))
       const cabinLook = new THREE.Vector3(CABIN.x + 2, CABIN.y - 0.05, CABIN.z).applyMatrix4(rig.matrixWorld)
       flyTween = gsap.to(p, {
         t: 1, duration: spot.cabin ? 2.6 : 1.8, ease: 'power3.inOut',
         onUpdate: () => {
           if (spot.cabin) {
-            // Cabin: through the open rear door, then seated.
-            flyView.pos.copy(p.t < 0.5 ? start.clone().lerp(doorPt, p.t * 2) : doorPt.clone().lerp(cabinPt, (p.t - 0.5) * 2))
+            // Cabin: from behind the car, through the rear glass, then seated.
+            if (p.t < 0.3) flyView.pos.lerpVectors(start, pathPts[0], p.t / 0.3)
+            else if (p.t < 0.65) flyView.pos.lerpVectors(pathPts[0], pathPts[1], (p.t - 0.3) / 0.35)
+            else flyView.pos.lerpVectors(pathPts[1], pathPts[2], (p.t - 0.65) / 0.35)
             flyView.look.lerpVectors(startLook, cabinLook, p.t)
           } else {
             anchorWorld(spot, target)
@@ -525,8 +424,6 @@ export default function TypeR() {
           }
         },
       })
-      // The cabin entry also opens the rear door.
-      if (spot.cabin) gsap.to(state, { door: 1, duration: 0.8, ease: 'power2.inOut' })
     }
 
     // Back to the journey: blend back to the scroll pose at the current scroll position.
@@ -550,13 +447,7 @@ export default function TypeR() {
       setMode('free')
     }
 
-    const doors = () => {
-      const open = state.door < 0.5
-      gsap.to(state, { door: open ? 1 : 0, duration: 0.9, ease: 'power2.inOut' })
-      setDoorsOpen(open)
-    }
-
-    actions.current = { fly, back, free, doors, paint: (i: number) => paintFn(i) }
+    actions.current = { fly, back, free, paint: (i: number) => paintFn(i) }
 
     // Callout labels: always visible, always clickable. Pushed apart vertically when they would overlap.
     const placed: { node: HTMLButtonElement; x: number; y: number; w: number; h: number; side: 'left' | 'right' }[] = []
@@ -612,9 +503,6 @@ export default function TypeR() {
       rig.updateMatrixWorld(true)
       key.position.x = 4 + state.pointerX * 2
       cabinLight.intensity = (mode === 'cabin' || state.inside > 0.5) ? 10 : 0
-      doorPivots.forEach((d) => { d.pivot.rotation.y = d.sign * d.open * state.door; d.pivot.visible = state.door > 0.001 })
-      doorU.uDoorOpen.value = state.door
-      rigInv.copy(rig.matrixWorld).invert()
       wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
       // Pick the camera pose for the current owner.
@@ -721,9 +609,6 @@ export default function TypeR() {
         )}
 
         <div className="absolute right-[4vw] top-[calc(7vh+clamp(40px,8vw,150px)+7vh)] flex flex-col items-end gap-3">
-          <button type="button" onClick={() => actions.current?.doors()} className="rounded-sm border border-white/30 bg-black/50 px-3 py-1.5 text-xs font-semibold tracking-[0.2em] text-white backdrop-blur hover:border-[#ff3340] hover:text-[#ff3340]">
-            {doorsOpen ? 'CLOSE DOORS' : 'OPEN DOORS'}
-          </button>
           {roaming || cabinMode || mode === 'fly' ? (
             <button type="button" onClick={() => actions.current?.back()} className="rounded-sm border border-white/30 bg-black/50 px-3 py-1.5 text-xs font-semibold tracking-[0.2em] text-white backdrop-blur hover:border-[#ff3340] hover:text-[#ff3340]">
               BACK TO JOURNEY
