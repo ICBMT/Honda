@@ -126,3 +126,17 @@
 .radar-dome:hover .radar-dome-sweep {
   background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, rgba(255, 70, 70, 0.5) 352deg, rgba(255, 150, 150, 0.95) 360deg);
 }
+
+/* Phone carousel: text and scenes rise in when their slide becomes active */
+.slide-reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.98);
+  filter: blur(6px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.7s ease;
+  transition-delay: calc(var(--d, 0) * 0.12s);
+}
+[data-active='true'] .slide-reveal {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}

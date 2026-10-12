@@ -4,6 +4,7 @@ import { SceneFor } from './scenes'
 
 // Phone layout for Section 2: a swipe carousel, one screen per slide.
 // Slide 1 is the blue car with its radar dome; then one slide per system.
+// Each slide's text and scene rise in when it becomes the active slide.
 export default function SensingMobile() {
   const scroller = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
@@ -29,13 +30,16 @@ export default function SensingMobile() {
         className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* Intro: the blue car with its radar dome */}
-        <article className="relative flex h-full w-screen flex-none snap-center flex-col items-center justify-between overflow-hidden bg-[radial-gradient(ellipse_at_50%_55%,rgba(40,120,255,0.35),transparent_65%),linear-gradient(to_bottom,#05070d,#0b1220)] px-6 pb-24 pt-[12vh]">
-          <div className="w-full">
+        <article
+          data-active={index === 0}
+          className="relative flex h-full w-screen flex-none snap-center flex-col items-center justify-between overflow-hidden bg-[radial-gradient(ellipse_at_50%_55%,rgba(40,120,255,0.35),transparent_65%),linear-gradient(to_bottom,#05070d,#0b1220)] px-6 pb-24 pt-[12vh]"
+        >
+          <div className="slide-reveal w-full" style={{ '--d': 0 } as React.CSSProperties}>
             <p className="text-lg font-extrabold tracking-wide text-[#e0202a]">HONDA</p>
             <p className="text-[11px] italic text-white/70">The Power of Dreams</p>
           </div>
 
-          <div className="relative w-[70vw]">
+          <div className="slide-reveal relative w-[70vw]" style={{ '--d': 1 } as React.CSSProperties}>
             <img
               src="/sensing/cars/blue_front.webp"
               alt="Honda Civic with Honda SENSING"
@@ -52,30 +56,31 @@ export default function SensingMobile() {
           </div>
 
           <div className="w-full">
-            <p className="text-sm font-light tracking-[0.12em]">Honda</p>
-            <h2 className="text-[15vw] font-bold leading-none tracking-[0.04em]">SENSING</h2>
-            <p className="mt-3 text-sm font-bold tracking-wide">STANDARD IN ALL VARIANTS</p>
-            <p className="mt-4 text-[11px] tracking-[0.25em] text-white/50">SWIPE TO EXPLORE →</p>
+            <p className="slide-reveal text-sm font-light tracking-[0.12em]" style={{ '--d': 2 } as React.CSSProperties}>Honda</p>
+            <h2 className="slide-reveal text-[15vw] font-bold leading-none tracking-[0.04em]" style={{ '--d': 3 } as React.CSSProperties}>SENSING</h2>
+            <p className="slide-reveal mt-3 text-sm font-bold tracking-wide" style={{ '--d': 4 } as React.CSSProperties}>STANDARD IN ALL VARIANTS</p>
+            <p className="slide-reveal mt-4 text-[11px] tracking-[0.25em] text-white/50" style={{ '--d': 5 } as React.CSSProperties}>SWIPE TO EXPLORE →</p>
           </div>
         </article>
 
         {/* One slide per system */}
-        {FEATURES.map((f) => (
+        {FEATURES.map((f, i) => (
           <article
             key={f.code}
+            data-active={index === i + 1}
             className="flex h-full w-screen flex-none snap-center flex-col justify-center gap-5 px-5 pb-24 pt-[12vh]"
           >
-            <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-[#101318]">
+            <div className="slide-reveal w-full overflow-hidden rounded-xl border border-white/10 bg-[#101318]" style={{ '--d': 0 } as React.CSSProperties}>
               <div className="aspect-[800/300] w-full">
                 <SceneFor code={f.code} />
               </div>
             </div>
             <div>
-              <h3 className="flex flex-wrap items-baseline gap-x-2 text-lg font-semibold leading-snug">
+              <h3 className="slide-reveal flex flex-wrap items-baseline gap-x-2 text-lg font-semibold leading-snug" style={{ '--d': 1 } as React.CSSProperties}>
                 <span className="text-amber-400">{f.code}</span>
                 <span className="text-amber-300/90">{f.title}</span>
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-white/70">{f.text}</p>
+              <p className="slide-reveal mt-3 text-sm leading-relaxed text-white/70" style={{ '--d': 2 } as React.CSSProperties}>{f.text}</p>
             </div>
           </article>
         ))}
