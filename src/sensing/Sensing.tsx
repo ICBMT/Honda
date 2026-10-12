@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
+import TwistText from '../lib/TwistText'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FEATURES } from './features'
 import { SceneFor } from './scenes'
@@ -258,12 +259,12 @@ export default function Sensing() {
                   style={{ left: pos.x, top: pos.y }}
                 >
                   <span className="block cursor-default rounded-full border border-cyan-300/40 bg-[#0a1420]/80 px-3 py-1 text-[clamp(10px,0.9vw,13px)] font-semibold tracking-[0.2em] text-cyan-100 backdrop-blur transition-colors duration-300 group-hover:border-amber-300 group-hover:text-amber-300">
-                    {f.code}
+                    <TwistText text={f.code} />
                   </span>
                   <div
                     className={`pointer-events-none absolute w-[clamp(200px,20vw,280px)] rounded-md border border-white/10 bg-[#0b0f16]/95 p-3 text-left opacity-0 shadow-xl transition duration-300 group-hover:opacity-100 ${DETAIL_POS[pos.side]}`}
                   >
-                    <p className="text-sm font-semibold text-amber-300">{f.title}</p>
+                    <p className="text-sm font-semibold text-amber-300"><TwistText text={f.title} /></p>
                     <p className="mt-1 text-xs leading-snug text-white/70">{f.text}</p>
                   </div>
                 </div>
@@ -273,8 +274,8 @@ export default function Sensing() {
 
             {/* Right panel: title block, as in the print */}
             <div data-intro="title" className="absolute inset-y-0 right-0 flex w-[38%] flex-col items-start justify-center bg-[#0b0c0f] pl-[4%]">
-              <p className="text-[clamp(14px,1.5vw,24px)] font-light tracking-[0.12em] text-white">Honda</p>
-              <h2 className="mt-[1vh] text-[clamp(40px,6.2vw,110px)] font-bold leading-none tracking-[0.04em]">SENSING</h2>
+              <p className="text-[clamp(14px,1.5vw,24px)] font-light tracking-[0.12em] text-white"><TwistText text="Honda" /></p>
+              <h2 className="mt-[1vh] text-[clamp(40px,6.2vw,110px)] font-bold leading-none tracking-[0.04em]"><TwistText text="SENSING" /></h2>
               <p className="mt-[4vh] text-[clamp(14px,1.6vw,26px)] font-bold leading-tight tracking-[0.02em]">
                 STANDARD IN ALL
                 <br />
@@ -297,8 +298,8 @@ export default function Sensing() {
               </div>
               <div className="border-t border-white/10 bg-[#0b0d12] px-[1.6vw] py-[1.2vh]">
                 <h3 className="flex items-baseline gap-[0.6vw] text-[clamp(14px,1.3vw,20px)] font-semibold">
-                  <span className="text-amber-400">{f.code}</span>
-                  <span className="text-amber-300/90">{f.title}</span>
+                  <span className="text-amber-400"><TwistText text={f.code} /></span>
+                  <span className="text-amber-300/90"><TwistText text={f.title} /></span>
                 </h3>
                 <p className="mt-[0.6vh] text-[clamp(11px,0.95vw,14px)] leading-snug text-white/70">{f.text}</p>
               </div>

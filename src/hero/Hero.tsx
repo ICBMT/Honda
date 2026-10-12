@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import gsap from 'gsap'
+import TwistText from '../lib/TwistText'
 import { STAGE, CARS, WHEELS, SMOKE, LIGHTS, TIMING, type CarKey } from './heroData'
 
 const pct = (v: number, total: number) => `${(v / total) * 100}%`
@@ -127,12 +128,12 @@ export default function Hero() {
   return (
     <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid grid-cols-[minmax(0,1fr)] justify-items-center items-start">
       <div data-header className="absolute left-[3vw] top-[4vh] z-10 text-white">
-        <div className="font-extrabold tracking-wide text-[#e0202a]" style={{ fontSize: 'clamp(28px, 4.2vw, 96px)', lineHeight: 1 }}>HONDA</div>
-        <div className="mt-[0.6vw] font-light italic" style={{ fontSize: 'clamp(11px, 1.2vw, 26px)' }}>The Power of Dreams</div>
+        <div className="font-extrabold tracking-wide text-[#e0202a]" style={{ fontSize: 'clamp(28px, 4.2vw, 96px)', lineHeight: 1 }}><TwistText text="HONDA" /></div>
+        <div className="mt-[0.6vw] font-light italic" style={{ fontSize: 'clamp(11px, 1.2vw, 26px)' }}><TwistText text="The Power of Dreams" /></div>
       </div>
       <div data-header className="absolute right-[3vw] top-[4vh] z-10 text-right text-white">
-        <div className="font-semibold" style={{ fontSize: 'clamp(16px, 2.2vw, 48px)' }}>How we move you.</div>
-        <div className="tracking-[0.2em] opacity-80" style={{ fontSize: 'clamp(9px, 0.95vw, 20px)' }}>CREATE ▸ TRANSCEND, AUGMENT</div>
+        <div className="font-semibold" style={{ fontSize: 'clamp(16px, 2.2vw, 48px)' }}><TwistText text="How we move you." /></div>
+        <div className="tracking-[0.2em] opacity-80" style={{ fontSize: 'clamp(9px, 0.95vw, 20px)' }}><TwistText text="CREATE ▸ TRANSCEND, AUGMENT" /></div>
       </div>
       <div
         data-stage
@@ -229,7 +230,7 @@ export default function Hero() {
           className="absolute left-1/2 top-[11%] -translate-x-1/2 whitespace-nowrap font-light tracking-[0.25em] text-white"
           style={{ fontSize: '2.1cqw' }}
         >
-          WHERE CLASS MEETS THRILL
+          <TwistText text="WHERE CLASS MEETS THRILL" />
         </div>
 
         <div
