@@ -96,6 +96,7 @@ export default function TypeR() {
   const root = useRef<HTMLElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const labelRefs = useRef<(HTMLDivElement | null)[]>([])
+  const fadeRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
   const [paint, setPaint] = useState(0)
   const paintFn = useRef<((i: number) => void) | null>(null)
@@ -175,7 +176,7 @@ export default function TypeR() {
     const state = {
       carX: -7, carRotY: 0, spin: 0,
       camX: 0, camY: 1.3, camZ: 9.5, lookX: 0, lookY: 1.5, lookZ: 0,
-      inside: 0, pointerX: 0, pointerY: 0,
+      inside: 0, pointerX: 0, pointerY: 0, fade: 0,
     }
 
     // Keep the canvas matched to its visible size.
@@ -267,8 +268,15 @@ export default function TypeR() {
     tl.to(state, { carX: 0, spin: 1, camX: 0.4, duration: 0.22, ease: 'power3.out' }, 0)
       .to(state, { spin: 0, duration: 0.05 }, 0.2)
       .to(state, { carRotY: Math.PI / 2, camX: 1.6, camY: 1.3, camZ: 8.2, lookY: 1.4, duration: 0.25 }, 0.25)
-      .to(state, { inside: 1, camX: CABIN_FOCUS.x, camY: CABIN_FOCUS.y, camZ: CABIN_FOCUS.z, lookX: CABIN_FOCUS.x + 2, lookY: CABIN_FOCUS.y - 0.05, lookZ: CABIN_FOCUS.z, duration: 0.25 }, 0.5)
-      .to(state, { inside: 0, camX: 0, camY: 1.2, camZ: 9.5, lookX: 0, lookY: 1.9, lookZ: 0, carRotY: Math.PI / 4, spin: 0.35, duration: 0.3 }, 0.72)
+      .to(state, { camX: 0.05, camY: 1.1, camZ: 1.6, lookX: 0, lookY: 1.0, lookZ: 0, duration: 0.08 }, 0.45)
+      .to(state, { fade: 1, duration: 0.05 }, 0.53)
+      // Cut into the cabin while the screen is black, car facing forward so the dash is in view.
+      .set(state, { carRotY: 0, camX: CABIN_FOCUS.x, camY: CABIN_FOCUS.y, camZ: CABIN_FOCUS.z, lookX: CABIN_FOCUS.x + 2, lookY: CABIN_FOCUS.y - 0.05, lookZ: CABIN_FOCUS.z, inside: 1 }, 0.58)
+      .to(state, { fade: 0, duration: 0.06 }, 0.58)
+      .to(state, { fade: 1, duration: 0.05 }, 0.7)
+      // Cut back out while black, then settle into the finale view.
+      .set(state, { inside: 0, carRotY: Math.PI / 4, camX: 0, camY: 1.2, camZ: 9.5, lookX: 0, lookY: 1.9, lookZ: 0, spin: 0.35 }, 0.75)
+      .to(state, { fade: 0, duration: 0.06 }, 0.75)
     labelRefs.current.forEach((node, i) => {
       if (!node) return
       tl.fromTo(node, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.05 }, 0.3 + i * 0.04)
@@ -325,6 +333,7 @@ export default function TypeR() {
       rig.rotation.y = state.carRotY
       key.position.x = 4 + state.pointerX * 2
       cabinLight.intensity = state.inside * 14
+      if (fadeRef.current) fadeRef.current.style.opacity = String(state.fade)
 
       // Wheels roll on their axles while the car moves.
       wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
@@ -355,6 +364,7 @@ export default function TypeR() {
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(200,16,46,0.22),transparent_60%)]" />
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
+        <div ref={fadeRef} className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 0 }} />
 
         <h2 className="absolute left-1/2 top-[8vh] -translate-x-1/2 whitespace-nowrap text-center font-black uppercase leading-none tracking-[0.02em] text-white" style={{ fontSize: 'clamp(40px, 8vw, 150px)' }}>
           <TwistText text="Civic Type-R" />
