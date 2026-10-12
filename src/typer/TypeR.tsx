@@ -37,15 +37,35 @@ const ENTER: Key[] = [
   { t: 0.46, pos: REAR_GLASS, look: CAR_FOCUS },
   { t: 0.56, pos: CABIN, look: CABIN_LOOK },
 ]
+// Seated: the look drifts from straight ahead down to the dashboard, then up to the windshield on the left.
+const DASH_LOOK = new THREE.Vector3(0.5, 0.8, 0.2)
+const WINDSHIELD_LOOK = new THREE.Vector3(2.5, 1.05, -0.7)
+const HOLD: { t: number; look: THREE.Vector3 }[] = [
+  { t: 0.56, look: CABIN_LOOK },
+  { t: 0.68, look: DASH_LOOK },
+  { t: 0.8, look: WINDSHIELD_LOOK },
+]
+// Exit: out through the left side of the windshield, then round the car's left side (-Z) to finish.
 const EXIT: Key[] = [
-  { t: 0.8, pos: CABIN, look: CABIN_LOOK },
-  { t: 0.88, pos: REAR_GLASS, look: CAR_FOCUS },
-  { t: 0.92, pos: BEHIND, look: CAR_FOCUS, back: true },
-  { t: 0.96, pos: new THREE.Vector3(-2.2, 1.5, 6.0), look: new THREE.Vector3(0, 1.6, 0) },
-  { t: 1, pos: new THREE.Vector3(0, 1.2, 9.5), look: new THREE.Vector3(0, 1.9, 0), orbit: true },
+  { t: 0.8, pos: CABIN, look: WINDSHIELD_LOOK },
+  { t: 0.86, pos: new THREE.Vector3(0.45, 1.05, -0.35), look: WINDSHIELD_LOOK },
+  { t: 0.9, pos: new THREE.Vector3(1.7, 1.15, -1.9), look: new THREE.Vector3(0.6, 0.9, -0.6), back: true },
+  { t: 0.94, pos: new THREE.Vector3(1.2, 1.5, -5.2), look: new THREE.Vector3(0, 0.9, 0), back: true },
+  { t: 0.97, pos: new THREE.Vector3(-0.8, 1.45, -7.6), look: new THREE.Vector3(0, 0.95, 0), back: true },
+  { t: 1, pos: new THREE.Vector3(0, 1.2, -9.5), look: new THREE.Vector3(0, 1.0, 0), orbit: true },
 ]
 const SEATED_FROM = 0.56
 const SEATED_TO = 0.8
+
+// Look direction only, while seated. The camera position stays put.
+function lookOn(keys: { t: number; look: THREE.Vector3 }[], p: number) {
+  const n = keys.length
+  const curve = new THREE.CatmullRomCurve3(keys.map((k) => k.look), false, 'centripetal')
+  let i = 0
+  while (i < n - 2 && p >= keys[i + 1].t) i++
+  const f = THREE.MathUtils.clamp((p - keys[i].t) / (keys[i + 1].t - keys[i].t), 0, 1)
+  return curve.getPoint((i + f) / (n - 1))
+}
 
 // Position and look at scroll progress p, interpolated along a spline through the keys.
 function poseOn(keys: Key[], p: number, fit: number) {
@@ -286,12 +306,11 @@ export default function TypeR() {
       setReady(true)
     })
 
-    // The timeline: roll in, glide into the cabin from behind, settle, glide back out, finale.
+    // The timeline: roll in, glide into the cabin from behind, look around the dash, leave through the windshield, orbit the left side.
     // Only the car and the wheel spin are timed here; the camera is computed from the same progress each frame.
     const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
     tl.to(state, { carX: 0, spin: 1, duration: 0.2, ease: 'power3.out' }, 0)
       .to(state, { spin: 0, duration: 0.05 }, 0.2)
-      .to(state, { carRotY: Math.PI / 4, duration: 0.08 }, 0.92)
     const trigger = ScrollTrigger.create({ trigger: el, start: 'top top', end: 'bottom bottom', scrub: 0.6, animation: tl })
 
     // Keep the car in frame on narrow screens by pulling the orbit keys back.
@@ -328,7 +347,7 @@ export default function TypeR() {
       const fit = fitFactor()
       let pose: { pos: THREE.Vector3; look: THREE.Vector3 }
       if (p <= SEATED_FROM) pose = poseOn(ENTER, p, fit)
-      else if (p < SEATED_TO) pose = { pos: CABIN, look: CABIN_LOOK }
+      else if (p < SEATED_TO) pose = { pos: CABIN, look: lookOn(HOLD, p) }
       else pose = poseOn(EXIT, p, fit)
       camera.position.copy(pose.pos)
       camera.lookAt(pose.look)
