@@ -140,6 +140,22 @@ export default function Sensing() {
         onEnter: () => intro.play(),
       })
 
+      // 3D tilt on each system card: it leans toward the pointer and settles back.
+      gsap.utils.toArray<HTMLElement>('[data-card]').forEach((card) => {
+        gsap.set(card, { transformPerspective: 900, transformOrigin: 'center center' })
+        const rx = gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3.out' })
+        const ry = gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3.out' })
+        card.addEventListener('pointermove', (e) => {
+          const r = card.getBoundingClientRect()
+          rx(-((e.clientY - r.top) / r.height - 0.5) * 8)
+          ry(((e.clientX - r.left) / r.width - 0.5) * 10)
+        })
+        card.addEventListener('pointerleave', () => {
+          rx(0)
+          ry(0)
+        })
+      })
+
       gsap.utils.toArray<HTMLElement>('[data-card]').forEach((card, i) => {
         gsap.fromTo(
           card,
