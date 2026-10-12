@@ -45,15 +45,27 @@ const HOLD: { t: number; look: THREE.Vector3 }[] = [
   { t: 0.68, look: DASH_LOOK },
   { t: 0.8, look: WINDSHIELD_LOOK },
 ]
-// Exit: out through the left side of the windshield, then round the car's left side (-Z) to finish.
+// Exit: out through the left side of the windshield and past the front-left fender.
+const ORBIT_FROM = 0.88
 const EXIT: Key[] = [
   { t: 0.8, pos: CABIN, look: WINDSHIELD_LOOK },
-  { t: 0.86, pos: new THREE.Vector3(0.45, 1.05, -0.35), look: WINDSHIELD_LOOK },
-  { t: 0.9, pos: new THREE.Vector3(1.7, 1.15, -1.9), look: new THREE.Vector3(0.6, 0.9, -0.6), back: true },
-  { t: 0.94, pos: new THREE.Vector3(1.2, 1.5, -5.2), look: new THREE.Vector3(0, 0.9, 0), back: true },
-  { t: 0.97, pos: new THREE.Vector3(-0.8, 1.45, -7.6), look: new THREE.Vector3(0, 0.95, 0), back: true },
-  { t: 1, pos: new THREE.Vector3(0, 1.2, -9.5), look: new THREE.Vector3(0, 1.0, 0), orbit: true },
+  { t: 0.85, pos: new THREE.Vector3(0.45, 1.05, -0.35), look: WINDSHIELD_LOOK },
+  { t: ORBIT_FROM, pos: new THREE.Vector3(1.7, 1.15, -1.9), look: new THREE.Vector3(0, 0.95, 0), back: true },
 ]
+const ORBIT_LOOK = new THREE.Vector3(0, 0.95, 0)
+
+// Then one full 360-degree orbit around the outside of the car. It starts at the front-left fender and
+// ends back on the left side, pulling out to the framing distance as it goes.
+function orbitPose(p: number, fit: number, start: THREE.Vector3) {
+  const q = THREE.MathUtils.clamp((p - ORBIT_FROM) / (1 - ORBIT_FROM), 0, 1)
+  const e = 0.5 - 0.5 * Math.cos(Math.PI * q)
+  const r0 = Math.hypot(start.x, start.z)
+  const th0 = Math.atan2(start.z, start.x)
+  const r = THREE.MathUtils.lerp(r0, 9.5 * fit, e)
+  const th = THREE.MathUtils.lerp(th0, -2.5 * Math.PI, e)
+  const y = THREE.MathUtils.lerp(start.y, 1.25, e)
+  return { pos: new THREE.Vector3(r * Math.cos(th), y, r * Math.sin(th)), look: ORBIT_LOOK.clone() }
+}
 const SEATED_FROM = 0.56
 const SEATED_TO = 0.8
 
@@ -306,7 +318,7 @@ export default function TypeR() {
       setReady(true)
     })
 
-    // The timeline: roll in, glide into the cabin from behind, look around the dash, leave through the windshield, orbit the left side.
+    // The timeline: roll in, glide into the cabin from behind, look around the dash, leave through the windshield, orbit the car.
     // Only the car and the wheel spin are timed here; the camera is computed from the same progress each frame.
     const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
     tl.to(state, { carX: 0, spin: 1, duration: 0.2, ease: 'power3.out' }, 0)
@@ -348,7 +360,8 @@ export default function TypeR() {
       let pose: { pos: THREE.Vector3; look: THREE.Vector3 }
       if (p <= SEATED_FROM) pose = poseOn(ENTER, p, fit)
       else if (p < SEATED_TO) pose = { pos: CABIN, look: lookOn(HOLD, p) }
-      else pose = poseOn(EXIT, p, fit)
+      else if (p < ORBIT_FROM) pose = poseOn(EXIT, p, fit)
+      else pose = orbitPose(p, fit, poseOn(EXIT, ORBIT_FROM, fit).pos)
       camera.position.copy(pose.pos)
       camera.lookAt(pose.look)
 
