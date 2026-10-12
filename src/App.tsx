@@ -3,6 +3,7 @@ import Hero from './hero/Hero'
 import PhoneHero from './hero/PhoneHero'
 import Sensing from './sensing/Sensing'
 import SensingMobile from './sensing/SensingMobile'
+import TypeR from './typer/TypeR'
 import { startSmoothScroll } from './lib/smooth'
 
 const PHONE_QUERY = '(max-width: 767px), (orientation: portrait) and (max-width: 1100px)'
@@ -29,6 +30,7 @@ export default function App() {
     <>
       {phone ? <PhoneHero /> : <Hero />}
       {phone ? <SensingMobile /> : <Sensing />}
+      <TypeR />
     </>
   )
 }
