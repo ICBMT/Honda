@@ -44,6 +44,24 @@ export default function Hero() {
       })
     }
 
+    // When the cars stop, a smoke cloud rolls over the car area and settles away.
+    const spawnCloud = () => {
+      const blobs: [number, number, number, number][] = [
+        [14, 70, 44, 46], [34, 58, 42, 52], [54, 66, 46, 50], [76, 60, 40, 48],
+        [24, 86, 52, 34], [66, 86, 52, 34], [90, 74, 36, 40],
+      ]
+      blobs.forEach(([x, y, w, h], i) => {
+        const d = document.createElement('div')
+        d.className = 'cloud-blob'
+        d.style.cssText = `position:absolute;pointer-events:none;z-index:3;left:${x}%;top:${y}%;width:${w}%;height:${h}%;border-radius:50%;background:radial-gradient(closest-side, rgba(236,241,248,0.9), rgba(205,214,228,0.4) 55%, rgba(205,214,228,0) 100%);filter:blur(10px)`
+        stage.appendChild(d)
+        gsap.set(d, { xPercent: -50, yPercent: -50, scale: 0.2, opacity: 0 })
+        gsap.timeline({ delay: i * 0.05, onComplete: () => d.remove() })
+          .to(d, { opacity: 0.85, scale: 1.1, duration: 0.7, ease: 'power2.out' })
+          .to(d, { opacity: 0, scale: 1.6, duration: 1.3, ease: 'power1.inOut' })
+      })
+    }
+
     const ctx = gsap.context(() => {
       // Initial states
       gsap.set(stage, { autoAlpha: 0, scale: 0.92, filter: 'blur(14px)' })
@@ -95,7 +113,9 @@ export default function Hero() {
       })
 
       // 3. Headlights start blinking once all three cars have landed
-      tl.call(() => flash.play(), [], Math.max(...CAR_KEYS.map((k) => TIMING[k].land)) + 0.1)
+      const lastLand = Math.max(...CAR_KEYS.map((k) => TIMING[k].land))
+      tl.call(() => spawnCloud(), [], lastLand)
+      tl.call(() => flash.play(), [], lastLand + 0.1)
     }, el)
 
     return () => {
@@ -134,7 +154,7 @@ export default function Hero() {
               key={car}
               data-car={car}
               className="absolute will-change-transform"
-              style={{ left: pct(c.x, STAGE.w), top: pct(c.y, STAGE.h), width: pct(c.w, STAGE.w) }}
+              style={{ left: pct(c.x, STAGE.w), top: pct(c.y, STAGE.h), width: pct(c.w, STAGE.w), zIndex: car === 'white' ? 1 : 2 }}
             >
               <div
                 aria-hidden
