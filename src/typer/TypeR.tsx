@@ -16,11 +16,12 @@ const PAINTS = [
 ]
 
 // Callouts live in car-local space: x runs nose (+) to tail (-) as a fraction of the car length; y is height above the ground.
+// Anchors are fractions of the car's measured body box (0..1 height, -0.5..0.5 along length and width), so they follow the car.
 const CALLOUTS = [
-  { text: '2.0L K20C1 VTEC TURBO', x: 0.3, y: 0.62, z: 0.0, side: 'left' as const },
-  { text: '420 Nm OF TORQUE', x: -0.3, y: 0.5, z: 0.92, side: 'right' as const },
-  { text: '6-SPEED MANUAL', x: 0.0, y: 1.02, z: 0.1, side: 'left' as const },
-  { text: 'MECHANICAL LIMITED-SLIP DIFF', x: -0.34, y: 0.32, z: -0.92, side: 'right' as const },
+  { text: '2.0L K20C1 VTEC TURBO', fx: 0.3, fy: 0.45, fz: 0.0, side: 'left' as const },
+  { text: '420 Nm OF TORQUE', fx: -0.3, fy: 0.3, fz: 0.45, side: 'right' as const },
+  { text: '6-SPEED MANUAL', fx: 0.0, fy: 0.72, fz: 0.1, side: 'left' as const },
+  { text: 'MECHANICAL LIMITED-SLIP DIFF', fx: -0.34, fy: 0.2, fz: -0.45, side: 'right' as const },
 ]
 
 const CABIN_FOCUS = { x: 0.05, y: 0.95, z: -0.35 }
@@ -121,16 +122,30 @@ export default function TypeR() {
     loader.load(MODEL_URL, (gltf) => {
       const model = gltf.scene
       model.updateMatrixWorld(true)
-      // Long axis to X, scale to CAR_LENGTH, then stand the car on the floor centred on the origin.
-      const size0 = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3())
-      if (size0.z > size0.x) model.rotation.y = Math.PI / 2
+      // Measure the car from its body and tyres only: the model also carries a room floor and ceiling,
+      // which would skew the bounds and leave the car floating above the floor.
+      const CAR_RE = /body_white_ext|tire|tyre|headlight/i
+      const TYRE_RE = /tire|tyre/i
+      const carBox = (re: RegExp) => {
+        const b = new THREE.Box3()
+        model.traverse((o) => {
+          const m = o as THREE.Mesh
+          if (!m.isMesh) return
+          const mat = Array.isArray(m.material) ? m.material[0] : m.material
+          if (re.test(mat.name || '')) b.expandByObject(m)
+        })
+        return b
+      }
+      // Long axis to X, scale to CAR_LENGTH, then stand the tyres on the floor, centred on the origin.
+      const s0 = carBox(CAR_RE).getSize(new THREE.Vector3())
+      if (s0.z > s0.x) model.rotation.y = Math.PI / 2
       model.updateMatrixWorld(true)
-      const size1 = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3())
-      model.scale.setScalar(CAR_LENGTH / Math.max(size1.x, size1.z))
+      const s1 = carBox(CAR_RE).getSize(new THREE.Vector3())
+      model.scale.setScalar(CAR_LENGTH / Math.max(s1.x, s1.z))
       model.updateMatrixWorld(true)
-      const box = new THREE.Box3().setFromObject(model)
-      const c = box.getCenter(new THREE.Vector3())
-      model.position.set(-c.x, -box.min.y, -c.z)
+      const c = carBox(CAR_RE).getCenter(new THREE.Vector3())
+      const tyreBox = carBox(TYRE_RE)
+      model.position.set(-c.x, -tyreBox.min.y, -c.z)
       model.updateMatrixWorld(true)
 
       // The headlights sit at the nose: point +X at the front.
@@ -149,6 +164,7 @@ export default function TypeR() {
       model.updateMatrixWorld(true)
       rig.add(model)
       rig.updateMatrixWorld(true)
+      anchorBox.copy(carBox(CAR_RE))
 
       paintFn.current = (i: number) => {
         if (!bodyMat) return
@@ -183,11 +199,16 @@ export default function TypeR() {
 
     // Callout labels follow their 3D anchor points.
     const v = new THREE.Vector3()
+    const v0 = new THREE.Vector3()
+    const v1 = new THREE.Vector3()
+    const anchorBox = new THREE.Box3()
     const project = () => {
       CALLOUTS.forEach((c, i) => {
         const node = labelRefs.current[i]
         if (!node) return
-        v.set(c.x * CAR_LENGTH * 0.5, c.y, c.z).applyMatrix4(rig.matrixWorld).project(camera)
+        const ctr = anchorBox.getCenter(v0)
+        const sz = anchorBox.getSize(v1)
+        v.set(ctr.x + c.fx * sz.x, anchorBox.min.y + c.fy * sz.y, ctr.z + c.fz * sz.z).applyMatrix4(rig.matrixWorld).project(camera)
         const x = (v.x * 0.5 + 0.5) * cv.clientWidth
         const y = (-v.y * 0.5 + 0.5) * cv.clientHeight
         node.style.transform = `translate(${x}px, ${y}px) translate(${c.side === 'left' ? '-100%' : '0'}, -50%)`
