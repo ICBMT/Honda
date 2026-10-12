@@ -194,13 +194,13 @@ export default function Hero() {
           )
         })}
 
-        <div data-header className="absolute left-[2.5%] top-[2.5%] text-white">
-          <div className="font-extrabold tracking-wide text-[#e0202a]" style={{ fontSize: '4.2cqw', lineHeight: 1 }}>HONDA</div>
-          <div className="mt-[0.6cqw] font-light italic" style={{ fontSize: '1.2cqw' }}>The Power of Dreams</div>
+        <div data-header className="fixed left-[3vw] top-[4vh] z-10 text-white">
+          <div className="font-extrabold tracking-wide text-[#e0202a]" style={{ fontSize: 'clamp(28px, 4.2vw, 96px)', lineHeight: 1 }}>HONDA</div>
+          <div className="mt-[0.6vw] font-light italic" style={{ fontSize: 'clamp(11px, 1.2vw, 26px)' }}>The Power of Dreams</div>
         </div>
-        <div data-header className="absolute right-[3%] top-[3%] text-right text-white">
-          <div className="font-semibold" style={{ fontSize: '2.2cqw' }}>How we move you.</div>
-          <div className="tracking-[0.2em] opacity-80" style={{ fontSize: '0.95cqw' }}>CREATE ▸ TRANSCEND, AUGMENT</div>
+        <div data-header className="fixed right-[3vw] top-[4vh] z-10 text-right text-white">
+          <div className="font-semibold" style={{ fontSize: 'clamp(16px, 2.2vw, 48px)' }}>How we move you.</div>
+          <div className="tracking-[0.2em] opacity-80" style={{ fontSize: 'clamp(9px, 0.95vw, 20px)' }}>CREATE ▸ TRANSCEND, AUGMENT</div>
         </div>
 
         <div
