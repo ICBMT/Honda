@@ -39,41 +39,60 @@ function boundsOf(root: THREE.Object3D, re: RegExp) {
   return b
 }
 
-// The model keeps all four tyres in one mesh per material. Split a tyre mesh into one mesh per wheel,
-// so each wheel can roll about its own axle.
-function splitWheels(src: THREE.Mesh, seeds: THREE.Vector3[]): THREE.Mesh[] {
+// Each wheel is a cylinder around its hub (axle along Z). Every triangle of the car whose centre falls inside a
+// wheel cylinder belongs to that wheel: tyre, rim, hub and calliper alike. Those triangles are moved into a
+// per-wheel mesh pivoting on the hub, so the whole wheel turns together; everything else stays put.
+function splitWheelParts(src: THREE.Mesh, seeds: THREE.Vector3[], R: number, halfW: number): THREE.Mesh[] {
   const geo = src.geometry as THREE.BufferGeometry
   const pos = geo.attributes.position as THREE.BufferAttribute
   const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
   const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
   const idx = geo.index
   const triCount = idx ? idx.count / 3 : pos.count / 3
-  const nm = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
-  const buckets = seeds.map(() => ({ p: [] as number[], n: [] as number[], uv: [] as number[] }))
   const vi = (t: number, j: number) => (idx ? idx.getX(t * 3 + j) : t * 3 + j)
+  const nmWorld = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
+  const rest = { p: [] as number[], n: [] as number[], uv: [] as number[] }
+  const buckets = seeds.map(() => ({ p: [] as number[], n: [] as number[], uv: [] as number[] }))
   const N = new THREE.Vector3()
+  let moved = 0
+  const pushVertex = (b: { p: number[]; n: number[]; uv: number[] }, i: number, q: THREE.Vector3, nm: THREE.Matrix3) => {
+    b.p.push(q.x, q.y, q.z)
+    if (nor) {
+      N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize()
+      b.n.push(N.x, N.y, N.z)
+    }
+    if (uv) b.uv.push(uv.getX(i), uv.getY(i))
+  }
+  const nmLocal = new THREE.Matrix3()
   for (let t = 0; t < triCount; t++) {
     const ids = [vi(t, 0), vi(t, 1), vi(t, 2)]
-    const pts = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
-    const cx = (pts[0].x + pts[1].x + pts[2].x) / 3
-    const cz = (pts[0].z + pts[1].z + pts[2].z) / 3
-    let best = 0
-    let bestD = Infinity
-    seeds.forEach((s, k) => {
-      const d = (s.x - cx) ** 2 + (s.z - cz) ** 2
-      if (d < bestD) { bestD = d; best = k }
-    })
-    const b = buckets[best]
-    ids.forEach((i, j) => {
-      const q = pts[j]
-      b.p.push(q.x, q.y, q.z)
-      if (nor) {
-        N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize()
-        b.n.push(N.x, N.y, N.z)
-      }
-      if (uv) b.uv.push(uv.getX(i), uv.getY(i))
-    })
+    const world = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
+    const cx = (world[0].x + world[1].x + world[2].x) / 3
+    const cy = (world[0].y + world[1].y + world[2].y) / 3
+    const cz = (world[0].z + world[1].z + world[2].z) / 3
+    let hit = -1
+    for (let k = 0; k < seeds.length; k++) {
+      const s = seeds[k]
+      if (Math.abs(cz - s.z) < halfW && Math.hypot(cx - s.x, cy - s.y) < R * 1.02) { hit = k; break }
+    }
+    if (hit >= 0) {
+      moved++
+      ids.forEach((i, j) => pushVertex(buckets[hit], i, world[j], nmWorld))
+    } else {
+      ids.forEach((i, j) => {
+        const q = new THREE.Vector3().fromBufferAttribute(pos, i)
+        pushVertex(rest, i, q, nmLocal)
+      })
+    }
   }
+  if (!moved) return []
+  // Rebuild the original mesh without the wheel triangles.
+  const restGeo = new THREE.BufferGeometry()
+  restGeo.setAttribute('position', new THREE.Float32BufferAttribute(rest.p, 3))
+  if (rest.n.length) restGeo.setAttribute('normal', new THREE.Float32BufferAttribute(rest.n, 3))
+  if (rest.uv.length) restGeo.setAttribute('uv', new THREE.Float32BufferAttribute(rest.uv, 2))
+  src.geometry = restGeo
+  src.visible = rest.p.length > 0
   const out: THREE.Mesh[] = []
   buckets.forEach((b, k) => {
     if (!b.p.length) return
@@ -81,7 +100,6 @@ function splitWheels(src: THREE.Mesh, seeds: THREE.Vector3[]): THREE.Mesh[] {
     g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3))
     if (b.n.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3))
     if (b.uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2))
-    // Pivot each wheel on its hub so it spins in place.
     g.translate(-seeds[k].x, -seeds[k].y, -seeds[k].z)
     const m = new THREE.Mesh(g, src.material)
     m.position.copy(seeds[k])
@@ -242,14 +260,12 @@ export default function TypeR() {
         new THREE.Vector3(xRear, hubY, zRight),
         new THREE.Vector3(xRear, hubY, zLeft),
       ]
-      const tyreMeshes: THREE.Mesh[] = []
+      const allMeshes: THREE.Mesh[] = []
       model.traverse((o) => {
-        const m = o as THREE.Mesh
-        if (m.isMesh && TYRE_RE.test((Array.isArray(m.material) ? m.material[0] : m.material).name || '')) tyreMeshes.push(m)
+        if ((o as THREE.Mesh).isMesh) allMeshes.push(o as THREE.Mesh)
       })
-      tyreMeshes.forEach((m) => {
-        splitWheels(m, seeds).forEach((w) => { rig.add(w); wheels.push(w) })
-        m.visible = false
+      allMeshes.forEach((m) => {
+        splitWheelParts(m, seeds, R, 0.16).forEach((w) => { rig.add(w); wheels.push(w) })
       })
 
       anchorBox.copy(boundsOf(model, CAR_RE))
