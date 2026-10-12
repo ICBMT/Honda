@@ -68,6 +68,18 @@ export default function Sensing() {
   const track = useRef<HTMLDivElement>(null)
   const part1 = useRef<HTMLDivElement>(null)
   const signRef = useRef<HTMLDivElement>(null)
+  const carImg = useRef<HTMLImageElement>(null)
+
+  // 3D tilt: the car leans toward the pointer and settles back when it leaves.
+  const onTilt = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width - 0.5
+    const y = (e.clientY - r.top) / r.height - 0.5
+    if (carImg.current) carImg.current.style.transform = `perspective(1400px) rotateX(${(-y * 10).toFixed(2)}deg) rotateY(${(x * 14).toFixed(2)}deg)`
+  }
+  const onTiltReset = () => {
+    if (carImg.current) carImg.current.style.transform = "perspective(1400px) rotateX(0deg) rotateY(0deg)"
+  }
 
   // The hazard sign follows the pointer while it is over the radar scan area.
   const showSign = (on: boolean) => {
@@ -158,7 +170,7 @@ export default function Sensing() {
         <div className="relative h-full w-screen overflow-hidden bg-[#0a0c10]">
           <div ref={part1} className="absolute inset-0">
             {/* Left panel: night city with blue light, as in the print */}
-            <div data-intro="sky" className="absolute inset-y-0 left-0 w-[62%] overflow-hidden">
+            <div data-intro="sky" onPointerMove={onTilt} onPointerLeave={onTiltReset} className="absolute inset-y-0 left-0 w-[62%] overflow-hidden">
               <Skyline />
               {/* Blue light wash across the horizon */}
               <div className="absolute inset-x-0 bottom-[22%] h-[26%] bg-[radial-gradient(ellipse_at_30%_50%,rgba(40,120,255,0.4),transparent_70%)]" />
@@ -168,7 +180,7 @@ export default function Sensing() {
               {/* Car with its blue glow */}
               <div data-intro="car" className="absolute left-[17%] top-[42%] w-[70%]">
                 <img
-                  src="/sensing/cars/blue_front.webp"
+                  ref={carImg} src="/sensing/cars/blue_front.webp"
                   alt="Honda Civic with Honda SENSING"
                   className="relative z-10 block w-full select-none drop-shadow-[0_18px_30px_rgba(0,0,0,0.6)]"
                   draggable={false}
