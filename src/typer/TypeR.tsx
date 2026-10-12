@@ -10,7 +10,7 @@ import TwistText from '../lib/TwistText'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const MODEL_URL = '/models/civic-type-r.glb'
+const MODEL_URL = '/models/honda_civic_type_r.glb'
 const CAR_LENGTH = 4.6
 const CAR_RE = /body_white_ext|tire|tyre|headlight/i
 const TYRE_RE = /tire|tyre/i
@@ -208,6 +208,14 @@ export default function TypeR() {
     let bodyMat: THREE.MeshStandardMaterial | null = null
     const wheels: THREE.Mesh[] = []
     const doorPivots: { pivot: THREE.Group; sign: number; open: number }[] = []
+    const doorMats: THREE.MeshStandardMaterial[] = []
+    const rigInv = new THREE.Matrix4()
+    const doorU = {
+      uDoorOpen: { value: 0 },
+      uDoorMin: { value: new THREE.Vector3() },
+      uDoorMax: { value: new THREE.Vector3() },
+      uRigInv: { value: rigInv },
+    }
     const anchorBox = new THREE.Box3()
     let loaded = false
     let paintFn: (i: number) => void = () => {}
@@ -303,16 +311,17 @@ export default function TypeR() {
 
       // Doors: the GLB has no separate door meshes. Each door panel is cut out of the body shell by its outline,
       // then hinged on its front edge. Only triangles fully inside an outline move, so the cut stays clean.
+      // Doors: the body stays whole. A box-shaped opening is cut in the body shader while the door is open, and a copy
+      // of the door panel swings on its hinge. Nothing is pulled apart, so the car never tears or peels.
       const bb = boundsOf(model, CAR_RE)
       const bc = bb.getCenter(new THREE.Vector3())
       const halfW = bb.max.z - bc.z
-      // Only the right rear door is hinged: its lower panel, below the glass, so the windows stay intact.
-      const yLo = bb.min.y + 0.36
-      const yHi = bb.min.y + 0.82
-      const doorDef = { x0: bc.x - 1.15, x1: bc.x - 0.05, hingeX: bc.x - 0.05, open: 0.95 }
-      const regions = [{
-        test: (x: number, y: number, z: number) => x > doorDef.x0 && x < doorDef.x1 && y > yLo && y < yHi && z > bc.z + halfW * 0.7,
-      }]
+      const hingeX = bc.x - 0.05
+      const doorMin = new THREE.Vector3(bc.x - 1.15, bb.min.y + 0.36, bc.z + halfW * 0.7)
+      const doorMax = new THREE.Vector3(bc.x - 0.05, bb.min.y + 0.82, bc.z + halfW * 1.3)
+      doorU.uDoorMin.value.copy(doorMin)
+      doorU.uDoorMax.value.copy(doorMax)
+      const inDoor = (x: number, y: number, z: number) => x > doorMin.x && x < doorMax.x && y > doorMin.y && y < doorMax.y && z > doorMin.z && z < doorMax.z
       const bodyMeshes: THREE.Mesh[] = []
       model.traverse((o) => {
         const m = o as THREE.Mesh
@@ -320,18 +329,77 @@ export default function TypeR() {
         const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.Material
         if (/body_white_ext/i.test(mat.name || '')) bodyMeshes.push(m)
       })
-      splitRegions(bodyMeshes, regions, 'all').forEach(({ geo, src }) => {
-        const pivotPos = new THREE.Vector3(doorDef.hingeX, 0, bc.z + halfW * 0.92)
-        geo.translate(-pivotPos.x, -pivotPos.y, -pivotPos.z)
-        const pivot = new THREE.Group()
-        pivot.position.copy(pivotPos)
-        const mesh = new THREE.Mesh(geo, src.material)
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-        pivot.add(mesh)
-        rig.add(pivot)
-        doorPivots.push({ pivot, sign: 1, open: doorDef.open })
+
+      // Copy the door panel's triangles (the originals stay put).
+      const dP: number[] = []
+      const dN: number[] = []
+      const dU: number[] = []
+      const N = new THREE.Vector3()
+      bodyMeshes.forEach((src) => {
+        const geo = src.geometry as THREE.BufferGeometry
+        const pos = geo.attributes.position as THREE.BufferAttribute
+        const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
+        const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
+        const idx = geo.index
+        const triCount = idx ? idx.count / 3 : pos.count / 3
+        const nm = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
+        for (let t = 0; t < triCount; t++) {
+          const ids = [0, 1, 2].map((j) => (idx ? idx.getX(t * 3 + j) : t * 3 + j))
+          const world = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
+          // Any triangle touching the door box is copied; the copy is clipped to the box in its own shader.
+          const touches = world.some((w) => inDoor(w.x, w.y, w.z))
+          if (!touches) continue
+          ids.forEach((i, j) => {
+            dP.push(world[j].x, world[j].y, world[j].z)
+            if (nor) { N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize(); dN.push(N.x, N.y, N.z) }
+            if (uv) dU.push(uv.getX(i), uv.getY(i))
+          })
+        }
       })
+      const pivotPos = new THREE.Vector3(hingeX, 0, bc.z + halfW * 0.92)
+      const doorGeo = new THREE.BufferGeometry()
+      doorGeo.setAttribute('position', new THREE.Float32BufferAttribute(dP, 3))
+      if (dN.length) doorGeo.setAttribute('normal', new THREE.Float32BufferAttribute(dN, 3))
+      if (dU.length) doorGeo.setAttribute('uv', new THREE.Float32BufferAttribute(dU, 2))
+      doorGeo.translate(-pivotPos.x, -pivotPos.y, -pivotPos.z)
+      const doorPivot = new THREE.Group()
+      doorPivot.position.copy(pivotPos)
+      doorPivot.visible = false
+      if (dP.length) {
+        const doorMat = (bodyMat as THREE.MeshStandardMaterial).clone()
+        doorMat.onBeforeCompile = (sh) => {
+          Object.assign(sh.uniforms, doorU, { uPivot: { value: pivotPos } })
+          sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 vLocal;\nuniform vec3 uPivot;')
+            .replace('#include <project_vertex>', '#include <project_vertex>\nvLocal = position + uPivot;')
+          sh.fragmentShader = sh.fragmentShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 vLocal;\nuniform vec3 uDoorMin;\nuniform vec3 uDoorMax;')
+            .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (any(lessThan(vLocal, uDoorMin)) || any(greaterThan(vLocal, uDoorMax))) discard;')
+        }
+        doorMat.customProgramCacheKey = () => 'door-clip'
+        doorMats.push(doorMat)
+        const doorMesh = new THREE.Mesh(doorGeo, doorMat)
+        doorMesh.castShadow = true
+        doorMesh.receiveShadow = true
+        doorPivot.add(doorMesh)
+      }
+      rig.add(doorPivot)
+      doorPivots.push({ pivot: doorPivot, sign: 1, open: 0.95 })
+
+      // The body shader drops fragments inside the door box while the door is open. Rig-local space keeps the hole on the car.
+      if (bodyMat) {
+        const body = bodyMat as THREE.MeshStandardMaterial
+        body.onBeforeCompile = (sh) => {
+          Object.assign(sh.uniforms, doorU)
+          sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 vRigPos;\nuniform mat4 uRigInv;')
+            .replace('#include <project_vertex>', '#include <project_vertex>\nvRigPos = (uRigInv * modelMatrix * vec4(transformed, 1.0)).xyz;')
+          sh.fragmentShader = sh.fragmentShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 vRigPos;\nuniform float uDoorOpen;\nuniform vec3 uDoorMin;\nuniform vec3 uDoorMax;')
+            .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (uDoorOpen > 0.01 && all(greaterThan(vRigPos, uDoorMin)) && all(lessThan(vRigPos, uDoorMax))) discard;')
+        }
+        body.customProgramCacheKey = () => 'body-door-hole'
+      }
 
       // Hotspot boxes are measured here, while the rig is still at the origin.
       anchorBox.copy(boundsOf(model, CAR_RE))
@@ -340,6 +408,7 @@ export default function TypeR() {
         if (!bodyMat) return
         const col = new THREE.Color(PAINTS[i].hex)
         gsap.to(bodyMat.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' })
+        doorMats.forEach((m) => gsap.to(m.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' }))
       }
       loaded = true
       setReady(true)
@@ -543,7 +612,9 @@ export default function TypeR() {
       rig.updateMatrixWorld(true)
       key.position.x = 4 + state.pointerX * 2
       cabinLight.intensity = (mode === 'cabin' || state.inside > 0.5) ? 10 : 0
-      doorPivots.forEach((d) => { d.pivot.rotation.y = d.sign * d.open * state.door })
+      doorPivots.forEach((d) => { d.pivot.rotation.y = d.sign * d.open * state.door; d.pivot.visible = state.door > 0.001 })
+      doorU.uDoorOpen.value = state.door
+      rigInv.copy(rig.matrixWorld).invert()
       wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
       // Pick the camera pose for the current owner.
