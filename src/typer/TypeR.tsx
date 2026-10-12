@@ -9,14 +9,15 @@ import TwistText from '../lib/TwistText'
 
 const MODEL_URL = '/models/civic-type-r.glb'
 const CAR_LENGTH = 4.6
+const CAR_RE = /body_white_ext|tire|tyre|headlight/i
+const TYRE_RE = /tire|tyre/i
 const PAINTS = [
   { name: 'Championship White', hex: '#f2f2ef' },
   { name: 'Rally Red', hex: '#c8102e' },
   { name: 'Crystal Black Pearl', hex: '#101216' },
 ]
 
-// Callouts live in car-local space: x runs nose (+) to tail (-) as a fraction of the car length; y is height above the ground.
-// Anchors are fractions of the car's measured body box (0..1 height, -0.5..0.5 along length and width), so they follow the car.
+// Anchors are fractions of the car's measured body box (height 0..1, length and width -0.5..0.5), so they follow the car.
 const CALLOUTS = [
   { text: '2.0L K20C1 VTEC TURBO', fx: 0.3, fy: 0.45, fz: 0.0, side: 'left' as const },
   { text: '420 Nm OF TORQUE', fx: -0.3, fy: 0.3, fz: 0.45, side: 'right' as const },
@@ -25,6 +26,71 @@ const CALLOUTS = [
 ]
 
 const CABIN_FOCUS = { x: 0.05, y: 0.95, z: -0.35 }
+
+// Bounds of the meshes whose material name matches, measured from their real vertices.
+function boundsOf(root: THREE.Object3D, re: RegExp) {
+  const b = new THREE.Box3()
+  root.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (!m.isMesh) return
+    const mat = Array.isArray(m.material) ? m.material[0] : m.material
+    if (re.test(mat.name || '')) b.expandByObject(m, true)
+  })
+  return b
+}
+
+// The model keeps all four tyres in one mesh per material. Split a tyre mesh into one mesh per wheel,
+// so each wheel can roll about its own axle.
+function splitWheels(src: THREE.Mesh, seeds: THREE.Vector3[]): THREE.Mesh[] {
+  const geo = src.geometry as THREE.BufferGeometry
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
+  const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
+  const idx = geo.index
+  const triCount = idx ? idx.count / 3 : pos.count / 3
+  const nm = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
+  const buckets = seeds.map(() => ({ p: [] as number[], n: [] as number[], uv: [] as number[] }))
+  const vi = (t: number, j: number) => (idx ? idx.getX(t * 3 + j) : t * 3 + j)
+  const N = new THREE.Vector3()
+  for (let t = 0; t < triCount; t++) {
+    const ids = [vi(t, 0), vi(t, 1), vi(t, 2)]
+    const pts = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
+    const cx = (pts[0].x + pts[1].x + pts[2].x) / 3
+    const cz = (pts[0].z + pts[1].z + pts[2].z) / 3
+    let best = 0
+    let bestD = Infinity
+    seeds.forEach((s, k) => {
+      const d = (s.x - cx) ** 2 + (s.z - cz) ** 2
+      if (d < bestD) { bestD = d; best = k }
+    })
+    const b = buckets[best]
+    ids.forEach((i, j) => {
+      const q = pts[j]
+      b.p.push(q.x, q.y, q.z)
+      if (nor) {
+        N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize()
+        b.n.push(N.x, N.y, N.z)
+      }
+      if (uv) b.uv.push(uv.getX(i), uv.getY(i))
+    })
+  }
+  const out: THREE.Mesh[] = []
+  buckets.forEach((b, k) => {
+    if (!b.p.length) return
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3))
+    if (b.n.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3))
+    if (b.uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2))
+    // Pivot each wheel on its hub so it spins in place.
+    g.translate(-seeds[k].x, -seeds[k].y, -seeds[k].z)
+    const m = new THREE.Mesh(g, src.material)
+    m.position.copy(seeds[k])
+    m.castShadow = true
+    m.receiveShadow = true
+    out.push(m)
+  })
+  return out
+}
 
 export default function TypeR() {
   const root = useRef<HTMLElement>(null)
@@ -96,7 +162,14 @@ export default function TypeR() {
     // The car rig: position, turn and paint of the car all live here.
     const rig = new THREE.Group()
     scene.add(rig)
+    // A warm light inside the cabin, so the interior reads during the cabin shot.
+    const cabinLight = new THREE.PointLight('#ffe9d6', 0, 7, 1.6)
+    cabinLight.position.set(CABIN_FOCUS.x, 1.05, 0)
+    rig.add(cabinLight)
+
     let bodyMat: THREE.MeshStandardMaterial | null = null
+    const wheels: THREE.Mesh[] = []
+    const anchorBox = new THREE.Box3()
     let loaded = false
 
     const state = {
@@ -105,7 +178,7 @@ export default function TypeR() {
       inside: 0, pointerX: 0, pointerY: 0,
     }
 
-    // Keep the canvas matched to its section size.
+    // Keep the canvas matched to its visible size.
     const resize = () => {
       const w = cv.clientWidth
       const h = cv.clientHeight
@@ -122,33 +195,22 @@ export default function TypeR() {
     loader.load(MODEL_URL, (gltf) => {
       const model = gltf.scene
       model.updateMatrixWorld(true)
-      // Measure the car from its body and tyres only: the model also carries a room floor and ceiling,
-      // which would skew the bounds and leave the car floating above the floor.
-      const CAR_RE = /body_white_ext|tire|tyre|headlight/i
-      const TYRE_RE = /tire|tyre/i
-      const carBox = (re: RegExp) => {
-        const b = new THREE.Box3()
-        model.traverse((o) => {
-          const m = o as THREE.Mesh
-          if (!m.isMesh) return
-          const mat = Array.isArray(m.material) ? m.material[0] : m.material
-          if (re.test(mat.name || '')) b.expandByObject(m)
-        })
-        return b
-      }
-      // Long axis to X, scale to CAR_LENGTH, then stand the tyres on the floor, centred on the origin.
-      const s0 = carBox(CAR_RE).getSize(new THREE.Vector3())
+
+      // Long axis to X, then scale so the body is CAR_LENGTH long.
+      const s0 = boundsOf(model, CAR_RE).getSize(new THREE.Vector3())
       if (s0.z > s0.x) model.rotation.y = Math.PI / 2
       model.updateMatrixWorld(true)
-      const s1 = carBox(CAR_RE).getSize(new THREE.Vector3())
+      const s1 = boundsOf(model, CAR_RE).getSize(new THREE.Vector3())
       model.scale.setScalar(CAR_LENGTH / Math.max(s1.x, s1.z))
       model.updateMatrixWorld(true)
-      const c = carBox(CAR_RE).getCenter(new THREE.Vector3())
-      const tyreBox = carBox(TYRE_RE)
-      model.position.set(-c.x, -tyreBox.min.y, -c.z)
+
+      // Centre on the body and stand the tyres on the floor.
+      const c = boundsOf(model, CAR_RE).getCenter(new THREE.Vector3())
+      const tyre0 = boundsOf(model, TYRE_RE)
+      model.position.set(-c.x, -tyre0.min.y, -c.z)
       model.updateMatrixWorld(true)
 
-      // The headlights sit at the nose: point +X at the front.
+      // Materials, shadows, and which end is the nose (the headlights sit at the front).
       let noseSum = 0
       model.traverse((o) => {
         const mesh = o as THREE.Mesh
@@ -157,14 +219,39 @@ export default function TypeR() {
         const name = mat.name || ''
         mesh.castShadow = true
         mesh.receiveShadow = true
-        if (/headlight/i.test(name)) noseSum += new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3()).x
+        if (/headlight/i.test(name)) noseSum += boundsOf(mesh, /./).getCenter(new THREE.Vector3()).x
         if (/body_white_ext/i.test(name)) bodyMat = mat
       })
       if (noseSum < 0) model.rotation.y += Math.PI
       model.updateMatrixWorld(true)
       rig.add(model)
       rig.updateMatrixWorld(true)
-      anchorBox.copy(carBox(CAR_RE))
+
+      // Wheels: split the tyre meshes into four wheels, each pivoting on its hub.
+      const tyreBox = boundsOf(model, TYRE_RE)
+      const R = (tyreBox.max.y - tyreBox.min.y) / 2
+      const hubY = tyreBox.min.y + R
+      const xFront = tyreBox.max.x - R
+      const xRear = tyreBox.min.x + R
+      const zRight = tyreBox.max.z - 0.125
+      const zLeft = tyreBox.min.z + 0.125
+      const seeds = [
+        new THREE.Vector3(xFront, hubY, zRight),
+        new THREE.Vector3(xFront, hubY, zLeft),
+        new THREE.Vector3(xRear, hubY, zRight),
+        new THREE.Vector3(xRear, hubY, zLeft),
+      ]
+      const tyreMeshes: THREE.Mesh[] = []
+      model.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (m.isMesh && TYRE_RE.test((Array.isArray(m.material) ? m.material[0] : m.material).name || '')) tyreMeshes.push(m)
+      })
+      tyreMeshes.forEach((m) => {
+        splitWheels(m, seeds).forEach((w) => { rig.add(w); wheels.push(w) })
+        m.visible = false
+      })
+
+      anchorBox.copy(boundsOf(model, CAR_RE))
 
       paintFn.current = (i: number) => {
         if (!bodyMat) return
@@ -179,7 +266,7 @@ export default function TypeR() {
     const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
     tl.to(state, { carX: 0, spin: 1, camX: 0.4, duration: 0.22, ease: 'power3.out' }, 0)
       .to(state, { spin: 0, duration: 0.05 }, 0.2)
-      .to(state, { carRotY: Math.PI / 2, camX: 1.2, camY: 1.1, camZ: 4.6, lookY: 1.4, duration: 0.25 }, 0.25)
+      .to(state, { carRotY: Math.PI / 2, camX: 1.6, camY: 1.3, camZ: 8.2, lookY: 1.4, duration: 0.25 }, 0.25)
       .to(state, { inside: 1, camX: CABIN_FOCUS.x, camY: CABIN_FOCUS.y, camZ: CABIN_FOCUS.z, lookX: CABIN_FOCUS.x + 2, lookY: CABIN_FOCUS.y - 0.05, lookZ: CABIN_FOCUS.z, duration: 0.25 }, 0.5)
       .to(state, { inside: 0, camX: 0, camY: 1.2, camZ: 9.5, lookX: 0, lookY: 1.9, lookZ: 0, carRotY: Math.PI / 4, spin: 0.35, duration: 0.3 }, 0.72)
     labelRefs.current.forEach((node, i) => {
@@ -189,26 +276,26 @@ export default function TypeR() {
     })
     const trigger = ScrollTrigger.create({ trigger: el, start: 'top top', end: 'bottom bottom', scrub: 0.6, animation: tl })
 
-    // Pointer: the car and camera drift with the mouse for depth.
+    // Pointer: the camera drifts with the mouse for depth.
     const onPointer = (e: PointerEvent) => {
       state.pointerX = e.clientX / window.innerWidth - 0.5
       state.pointerY = e.clientY / window.innerHeight - 0.5
     }
     window.addEventListener('pointermove', onPointer, { passive: true })
 
-
-    // Callout labels follow their 3D anchor points.
+    // Callout labels follow their 3D anchor points on the car.
     const v = new THREE.Vector3()
-    const v0 = new THREE.Vector3()
-    const v1 = new THREE.Vector3()
-    const anchorBox = new THREE.Box3()
+    const ctrV = new THREE.Vector3()
+    const sizeV = new THREE.Vector3()
     const project = () => {
+      if (!anchorBox.isEmpty()) {
+        anchorBox.getCenter(ctrV)
+        anchorBox.getSize(sizeV)
+      }
       CALLOUTS.forEach((c, i) => {
         const node = labelRefs.current[i]
         if (!node) return
-        const ctr = anchorBox.getCenter(v0)
-        const sz = anchorBox.getSize(v1)
-        v.set(ctr.x + c.fx * sz.x, anchorBox.min.y + c.fy * sz.y, ctr.z + c.fz * sz.z).applyMatrix4(rig.matrixWorld).project(camera)
+        v.set(ctrV.x + c.fx * sizeV.x, anchorBox.min.y + c.fy * sizeV.y, ctrV.z + c.fz * sizeV.z).applyMatrix4(rig.matrixWorld).project(camera)
         const x = (v.x * 0.5 + 0.5) * cv.clientWidth
         const y = (-v.y * 0.5 + 0.5) * cv.clientHeight
         node.style.transform = `translate(${x}px, ${y}px) translate(${c.side === 'left' ? '-100%' : '0'}, -50%)`
@@ -237,6 +324,10 @@ export default function TypeR() {
       rig.position.x = state.carX
       rig.rotation.y = state.carRotY
       key.position.x = 4 + state.pointerX * 2
+      cabinLight.intensity = state.inside * 14
+
+      // Wheels roll on their axles while the car moves.
+      wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
       project()
       renderer.render(scene, camera)
