@@ -3,7 +3,6 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import TwistText from '../lib/TwistText'
@@ -15,26 +14,55 @@ const CAR_LENGTH = 4.6
 const CAR_RE = /body_white_ext|tire|tyre|headlight/i
 const TYRE_RE = /tire|tyre/i
 const TARGET = new THREE.Vector3(0, 0.7, 0)
-// World positions once the car is centred at the origin, nose toward +X, right-hand side toward +Z.
+// Car is centred at the origin, nose toward +X, right-hand side toward +Z.
 const BEHIND = new THREE.Vector3(-4.3, 1.25, 0.3)      // behind the car, on its centre line
 const REAR_GLASS = new THREE.Vector3(-1.4, 1.1, 0.2)   // just inside the rear glass
 const CABIN = new THREE.Vector3(-0.15, 1.02, 0.2)      // seated, between the front seats and dash
-const CAR_FOCUS = new THREE.Vector3(0.2, 0.9, 0.2)     // the camera keeps the car in view while it enters
+const CABIN_LOOK = new THREE.Vector3(CABIN.x + 2, CABIN.y - 0.05, CABIN.z)
+const CAR_FOCUS = new THREE.Vector3(0.2, 0.9, 0.2)     // keeps the car framed while the camera enters
 const PAINTS = [
   { name: 'Championship White', hex: '#f2f2ef' },
   { name: 'Rally Red', hex: '#c8102e' },
   { name: 'Crystal Black Pearl', hex: '#101216' },
 ]
 
-// Hotspots. Anchors are fractions of the car's measured body box (length and width -0.5..0.5, height 0..1).
-const SPOTS = [
-  { id: 'engine', label: '2.0L K20C1 VTEC TURBO', fx: 0.32, fy: 0.55, fz: 0, side: 'left' as const, title: 'K20C1 turbo engine', text: '2.0-litre direct-injection turbo four, with 420 Nm of torque from 2,600 to 4,000 rpm.', cabin: false },
-  { id: 'cockpit', label: 'INSIDE THE COCKPIT', fx: 0.05, fy: 0.7, fz: 0.1, side: 'right' as const, title: 'Inside the cockpit', text: 'Driver-focused interior with red stitching on the sport seats. Drag to look around.', cabin: true },
-  { id: 'gearbox', label: '6-SPEED MANUAL', fx: -0.02, fy: 0.2, fz: 0, side: 'left' as const, title: '6-speed manual', text: 'Row-your-own gearbox. The Type R is manual only.', cabin: false },
-  { id: 'diff', label: 'MECHANICAL LIMITED-SLIP DIFF', fx: -0.34, fy: 0.2, fz: -0.45, side: 'right' as const, title: 'Limited-slip differential', text: 'A mechanical limited-slip differential helps the front wheels put power down out of corners.', cabin: false },
+// Camera path, keyed by scroll progress. Each segment is a smooth spline through its keys, so nothing cuts or stops.
+// Keys marked orbit are pulled back on narrow screens so the whole car stays in frame. Keys marked back
+// move away from the car by the same amount, so the glide starts far enough back on a phone.
+type Key = { t: number; pos: THREE.Vector3; look: THREE.Vector3; orbit?: boolean; back?: boolean }
+const ENTER: Key[] = [
+  { t: 0, pos: new THREE.Vector3(0.4, 1.3, 9.5), look: new THREE.Vector3(0, 1.5, 0), orbit: true },
+  { t: 0.2, pos: new THREE.Vector3(-3.4, 1.3, 2.4), look: new THREE.Vector3(0.2, 1.0, 0.2) },
+  { t: 0.36, pos: BEHIND, look: CAR_FOCUS, back: true },
+  { t: 0.46, pos: REAR_GLASS, look: CAR_FOCUS },
+  { t: 0.56, pos: CABIN, look: CABIN_LOOK },
 ]
+const EXIT: Key[] = [
+  { t: 0.8, pos: CABIN, look: CABIN_LOOK },
+  { t: 0.88, pos: REAR_GLASS, look: CAR_FOCUS },
+  { t: 0.92, pos: BEHIND, look: CAR_FOCUS, back: true },
+  { t: 0.96, pos: new THREE.Vector3(-2.2, 1.5, 6.0), look: new THREE.Vector3(0, 1.6, 0) },
+  { t: 1, pos: new THREE.Vector3(0, 1.2, 9.5), look: new THREE.Vector3(0, 1.9, 0), orbit: true },
+]
+const SEATED_FROM = 0.56
+const SEATED_TO = 0.8
 
-type Mode = 'scroll' | 'fly' | 'free' | 'cabin'
+// Position and look at scroll progress p, interpolated along a spline through the keys.
+function poseOn(keys: Key[], p: number, fit: number) {
+  const n = keys.length
+  const pts = keys.map((k) => {
+    if (k.orbit) return new THREE.Vector3(k.pos.x, k.pos.y, k.pos.z * fit)
+    if (k.back) return CAR_FOCUS.clone().lerp(k.pos, fit)
+    return k.pos
+  })
+  const posCurve = new THREE.CatmullRomCurve3(pts, false, 'centripetal')
+  const lookCurve = new THREE.CatmullRomCurve3(keys.map((k) => k.look), false, 'centripetal')
+  let i = 0
+  while (i < n - 2 && p >= keys[i + 1].t) i++
+  const f = THREE.MathUtils.clamp((p - keys[i].t) / (keys[i + 1].t - keys[i].t), 0, 1)
+  const u = (i + f) / (n - 1)
+  return { pos: posCurve.getPoint(u), look: lookCurve.getPoint(u) }
+}
 
 // Bounds of the meshes whose material name matches, measured from their real vertices.
 function boundsOf(root: THREE.Object3D, re: RegExp) {
@@ -48,96 +76,71 @@ function boundsOf(root: THREE.Object3D, re: RegExp) {
   return b
 }
 
-// Triangles move into a region's own mesh only when all three corners lie inside that region, so nothing is stretched.
-type Region = { test: (x: number, y: number, z: number) => boolean }
-function splitRegions(meshes: THREE.Mesh[], regions: Region[], mode: 'all' | 'centroid'): { region: number; geo: THREE.BufferGeometry; src: THREE.Mesh }[] {
-  const out: { region: number; geo: THREE.BufferGeometry; src: THREE.Mesh }[] = []
-  meshes.forEach((src) => {
-    const geo = src.geometry as THREE.BufferGeometry
-    const pos = geo.attributes.position as THREE.BufferAttribute
-    const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
-    const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
-    const idx = geo.index
-    const triCount = idx ? idx.count / 3 : pos.count / 3
-    const vi = (t: number, j: number) => (idx ? idx.getX(t * 3 + j) : t * 3 + j)
-    const nmWorld = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
-    const rest = { p: [] as number[], n: [] as number[], uv: [] as number[] }
-    const buckets = regions.map(() => ({ p: [] as number[], n: [] as number[], uv: [] as number[] }))
-    const N = new THREE.Vector3()
-    const push = (b: { p: number[]; n: number[]; uv: number[] }, i: number, q: THREE.Vector3, nm: THREE.Matrix3) => {
-      b.p.push(q.x, q.y, q.z)
-      if (nor) { N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize(); b.n.push(N.x, N.y, N.z) }
-      if (uv) b.uv.push(uv.getX(i), uv.getY(i))
-    }
-    const identity = new THREE.Matrix3()
-    let moved = 0
-    for (let t = 0; t < triCount; t++) {
-      const ids = [vi(t, 0), vi(t, 1), vi(t, 2)]
-      const world = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
-      let hit = -1
-      const cx = (world[0].x + world[1].x + world[2].x) / 3
-      const cy = (world[0].y + world[1].y + world[2].y) / 3
-      const cz = (world[0].z + world[1].z + world[2].z) / 3
-      for (let k = 0; k < regions.length; k++) {
-        const inside = mode === 'all' ? world.every((w) => regions[k].test(w.x, w.y, w.z)) : regions[k].test(cx, cy, cz)
-        if (inside) { hit = k; break }
-      }
-      if (hit >= 0) {
-        moved++
-        ids.forEach((i, j) => push(buckets[hit], i, world[j], nmWorld))
-      } else {
-        ids.forEach((i) => push(rest, i, new THREE.Vector3().fromBufferAttribute(pos, i), identity))
-      }
-    }
-    if (!moved) return
-    const restGeo = new THREE.BufferGeometry()
-    restGeo.setAttribute('position', new THREE.Float32BufferAttribute(rest.p, 3))
-    if (rest.n.length) restGeo.setAttribute('normal', new THREE.Float32BufferAttribute(rest.n, 3))
-    if (rest.uv.length) restGeo.setAttribute('uv', new THREE.Float32BufferAttribute(rest.uv, 2))
-    src.geometry = restGeo
-    buckets.forEach((b, k) => {
-      if (!b.p.length) return
-      const g = new THREE.BufferGeometry()
-      g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3))
-      if (b.n.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3))
-      if (b.uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2))
-      out.push({ region: k, geo: g, src })
-    })
-  })
-  return out
-}
-
-// Each wheel is a cylinder around its hub (axle along Z). Triangles whose corners fall inside a wheel cylinder
+// Each wheel is a cylinder around its hub (axle along Z). Triangles whose centroid falls inside a wheel cylinder
 // move into a per-wheel mesh that pivots on the hub, so tyre, rim, hub and calliper turn together.
 function splitWheelParts(src: THREE.Mesh, seeds: THREE.Vector3[], R: number, halfW: number): THREE.Mesh[] {
-  const hits = splitRegions([src], seeds.map((s) => ({
-    test: (x: number, y: number, z: number) => Math.abs(z - s.z) < halfW && Math.hypot(x - s.x, y - s.y) < R * 1.02,
-  })), 'centroid')
-  return hits.map(({ region, geo }) => {
-    const s = seeds[region]
-    geo.translate(-s.x, -s.y, -s.z)
-    const m = new THREE.Mesh(geo, src.material)
+  const geo = src.geometry as THREE.BufferGeometry
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  const nor = geo.attributes.normal as THREE.BufferAttribute | undefined
+  const uv = geo.attributes.uv as THREE.BufferAttribute | undefined
+  const idx = geo.index
+  const triCount = idx ? idx.count / 3 : pos.count / 3
+  const vi = (t: number, j: number) => (idx ? idx.getX(t * 3 + j) : t * 3 + j)
+  const nmWorld = new THREE.Matrix3().getNormalMatrix(src.matrixWorld)
+  const identity = new THREE.Matrix3()
+  const rest = { p: [] as number[], n: [] as number[], uv: [] as number[] }
+  const buckets = seeds.map(() => ({ p: [] as number[], n: [] as number[], uv: [] as number[] }))
+  const N = new THREE.Vector3()
+  const push = (b: { p: number[]; n: number[]; uv: number[] }, i: number, q: THREE.Vector3, nm: THREE.Matrix3) => {
+    b.p.push(q.x, q.y, q.z)
+    if (nor) { N.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize(); b.n.push(N.x, N.y, N.z) }
+    if (uv) b.uv.push(uv.getX(i), uv.getY(i))
+  }
+  let moved = 0
+  for (let t = 0; t < triCount; t++) {
+    const ids = [vi(t, 0), vi(t, 1), vi(t, 2)]
+    const world = ids.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(src.matrixWorld))
+    const cx = (world[0].x + world[1].x + world[2].x) / 3
+    const cy = (world[0].y + world[1].y + world[2].y) / 3
+    const cz = (world[0].z + world[1].z + world[2].z) / 3
+    const hit = seeds.findIndex((s) => Math.abs(cz - s.z) < halfW && Math.hypot(cx - s.x, cy - s.y) < R * 1.02)
+    if (hit >= 0) {
+      moved++
+      ids.forEach((i, j) => push(buckets[hit], i, world[j], nmWorld))
+    } else {
+      ids.forEach((i) => push(rest, i, new THREE.Vector3().fromBufferAttribute(pos, i), identity))
+    }
+  }
+  if (!moved) return []
+  const build = (b: { p: number[]; n: number[]; uv: number[] }) => {
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3))
+    if (b.n.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3))
+    if (b.uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2))
+    return g
+  }
+  src.geometry = build(rest)
+  const out: THREE.Mesh[] = []
+  buckets.forEach((b, k) => {
+    if (!b.p.length) return
+    const g = build(b)
+    const s = seeds[k]
+    g.translate(-s.x, -s.y, -s.z)
+    const m = new THREE.Mesh(g, src.material)
     m.position.copy(s)
     m.castShadow = true
     m.receiveShadow = true
-    return m
+    out.push(m)
   })
+  return out
 }
 
 export default function TypeR() {
   const root = useRef<HTMLElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
-  const labelRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const actions = useRef<{
-    fly: (i: number) => void
-    back: () => void
-    free: () => void
-    paint: (i: number) => void
-  } | null>(null)
+  const paintRef = useRef<(i: number) => void>(() => {})
   const [ready, setReady] = useState(false)
   const [paint, setPaint] = useState(0)
-  const [mode, setModeUI] = useState<Mode>('scroll')
-  const [focus, setFocus] = useState<string | null>(null)
 
   useEffect(() => {
     const el = root.current!
@@ -197,7 +200,7 @@ export default function TypeR() {
     glow.position.y = 0.002
     scene.add(glow)
 
-    // The car rig: position, turn and paint all live here. It stays at the origin while the model loads.
+    // The car rig. It stays at the origin while the model loads.
     const rig = new THREE.Group()
     scene.add(rig)
     const cabinLight = new THREE.PointLight('#ffe9d6', 0, 7, 1.6)
@@ -206,30 +209,10 @@ export default function TypeR() {
 
     let bodyMat: THREE.MeshStandardMaterial | null = null
     const wheels: THREE.Mesh[] = []
-    const anchorBox = new THREE.Box3()
     let loaded = false
-    let paintFn: (i: number) => void = () => {}
 
-    // Scroll-driven state. The timeline writes into this; the frame loop reads it.
-    const state = {
-      carX: -7, carRotY: 0, spin: 0,
-      camX: 0.4, camY: 1.3, camZ: 9.5, lookX: 0, lookY: 1.5, lookZ: 0,
-      inside: 0, yaw: 0, pitch: 0, pointerX: 0, pointerY: 0,
-    }
-
-    let mode: Mode = 'scroll'
-    const setMode = (m: Mode) => { mode = m; setModeUI(m) }
-
-    // Smooth hand-over: when the camera changes owner, it blends from the last pose instead of cutting.
-    const blend = { t: 1 }
-    const blendFrom = { pos: new THREE.Vector3(), look: new THREE.Vector3() }
-    const lastPose = { pos: new THREE.Vector3(), look: new THREE.Vector3() }
-    const beginBlend = () => {
-      blendFrom.pos.copy(lastPose.pos)
-      blendFrom.look.copy(lastPose.look)
-      blend.t = 0
-      gsap.to(blend, { t: 1, duration: 0.9, ease: 'power2.inOut' })
-    }
+    // Scroll-driven car state. The timeline writes into this; the frame loop reads it.
+    const state = { carX: -7, carRotY: 0, spin: 0 }
 
     const resize = () => {
       const w = cv.clientWidth
@@ -299,277 +282,87 @@ export default function TypeR() {
         splitWheelParts(m, seeds, R, 0.16).forEach((w) => { rig.add(w); wheels.push(w) })
       })
 
-      // Hotspot boxes are measured here, while the rig is still at the origin.
-      anchorBox.copy(boundsOf(model, CAR_RE))
-
-      paintFn = (i: number) => {
-        if (!bodyMat) return
-        const col = new THREE.Color(PAINTS[i].hex)
-        gsap.to(bodyMat.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' })
-      }
       loaded = true
       setReady(true)
     })
 
-    // The journey, scrubbed by scroll:
-    // roll in, side pass, glide in from behind through the rear glass, look around the cabin, glide back out, finale.
+    // The timeline: roll in, glide into the cabin from behind, settle, glide back out, finale.
+    // Only the car and the wheel spin are timed here; the camera is computed from the same progress each frame.
     const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
-    const look = (x: number, y: number, z: number) => ({ lookX: x, lookY: y, lookZ: z })
     tl.to(state, { carX: 0, spin: 1, duration: 0.2, ease: 'power3.out' }, 0)
       .to(state, { spin: 0, duration: 0.05 }, 0.2)
-      .to(state, { camX: -3.4, camY: 1.3, camZ: 2.4, ...look(0.2, 1.0, 0.2), duration: 0.16 }, 0.2)
-      // Glide in from behind the car: no cut, the camera just moves through the rear glass.
-      .to(state, { camX: BEHIND.x, camY: BEHIND.y, camZ: BEHIND.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.1 }, 0.36)
-      .to(state, { camX: REAR_GLASS.x, camY: REAR_GLASS.y, camZ: REAR_GLASS.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.1 }, 0.46)
-      .to(state, { camX: CABIN.x, camY: CABIN.y, camZ: CABIN.z, ...look(CABIN.x + 2, CABIN.y - 0.05, CABIN.z), duration: 0.08 }, 0.56)
-      .set(state, { inside: 1, yaw: 0, pitch: 0 }, 0.64)
-      // Glide back out the same way.
-      .set(state, { inside: 0 }, 0.8)
-      .to(state, { camX: REAR_GLASS.x, camY: REAR_GLASS.y, camZ: REAR_GLASS.z, ...look(CAR_FOCUS.x, CAR_FOCUS.y, CAR_FOCUS.z), duration: 0.08 }, 0.8)
-      .to(state, { camX: BEHIND.x, camY: BEHIND.y, camZ: BEHIND.z, duration: 0.08 }, 0.88)
-      .to(state, { camX: 0, camY: 1.2, camZ: 9.5, ...look(0, 1.9, 0), carRotY: Math.PI / 4, duration: 0.12 }, 0.94)
-      .to(state, { spin: 0.35, duration: 0.05 }, 0.94)
-      .to(state, { spin: 0, duration: 0.05 }, 0.99)
+      .to(state, { carRotY: Math.PI / 4, duration: 0.08 }, 0.92)
     const trigger = ScrollTrigger.create({ trigger: el, start: 'top top', end: 'bottom bottom', scrub: 0.6, animation: tl })
 
-    const onPointer = (e: PointerEvent) => {
-      state.pointerX = e.clientX / window.innerWidth - 0.5
-      state.pointerY = e.clientY / window.innerHeight - 0.5
-    }
-    window.addEventListener('pointermove', onPointer, { passive: true })
-
-    // Look around inside the cabin: drag to turn the head. Only active while seated.
-    let dragging = false
-    let lastX = 0
-    let lastY = 0
-    const inCabin = () => mode === 'cabin' || (mode === 'scroll' && state.inside > 0.5)
-    const onDown = (e: PointerEvent) => { if (inCabin()) { dragging = true; lastX = e.clientX; lastY = e.clientY } }
-    const onMove = (e: PointerEvent) => {
-      if (!dragging) return
-      state.yaw = THREE.MathUtils.clamp(state.yaw - (e.clientX - lastX) * 0.005, -1.4, 1.4)
-      state.pitch = THREE.MathUtils.clamp(state.pitch - (e.clientY - lastY) * 0.004, -0.5, 0.5)
-      lastX = e.clientX
-      lastY = e.clientY
-    }
-    const onUp = () => { dragging = false }
-    cv.addEventListener('pointerdown', onDown)
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-
-    // Free roam: orbit, zoom, no pan. Only active when the viewer takes over the camera.
-    const controls = new OrbitControls(camera, cv)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.08
-    controls.enablePan = false
-    controls.minDistance = 2.2
-    controls.maxDistance = 16
-    controls.maxPolarAngle = Math.PI * 0.49
-    controls.target.copy(TARGET)
-    controls.enabled = false
-
-    const v = new THREE.Vector3()
-    const ctr = new THREE.Vector3()
-    const sz = new THREE.Vector3()
-    const anchorWorld = (spot: (typeof SPOTS)[number], out: THREE.Vector3) => {
-      anchorBox.getCenter(ctr)
-      anchorBox.getSize(sz)
-      out.set(ctr.x + spot.fx * sz.x, anchorBox.min.y + spot.fy * sz.y, ctr.z + spot.fz * sz.z)
-      return out.applyMatrix4(rig.matrixWorld)
-    }
-
-    // Fly: glide to a hotspot. The target is recomputed each frame, so it stays on the car.
-    let flyTween: gsap.core.Tween | null = null
-    const flyView = { pos: new THREE.Vector3(), look: new THREE.Vector3() }
-    const fly = (i: number) => {
-      const spot = SPOTS[i]
-      if (!spot || !loaded) return
-      flyTween?.kill()
-      controls.enabled = false
-      setFocus(spot.id)
-      setMode('fly')
-      const start = camera.position.clone()
-      const startLook = controls.target.clone()
-      const p = { t: 0 }
-      const target = new THREE.Vector3()
-      const end = new THREE.Vector3()
-      const pathPts = [BEHIND, REAR_GLASS, CABIN].map((q) => q.clone().applyMatrix4(rig.matrixWorld))
-      const cabinLook = new THREE.Vector3(CABIN.x + 2, CABIN.y - 0.05, CABIN.z).applyMatrix4(rig.matrixWorld)
-      flyTween = gsap.to(p, {
-        t: 1, duration: spot.cabin ? 2.6 : 1.8, ease: 'power3.inOut',
-        onUpdate: () => {
-          if (spot.cabin) {
-            // Cabin: from behind the car, through the rear glass, then seated.
-            if (p.t < 0.3) flyView.pos.lerpVectors(start, pathPts[0], p.t / 0.3)
-            else if (p.t < 0.65) flyView.pos.lerpVectors(pathPts[0], pathPts[1], (p.t - 0.3) / 0.35)
-            else flyView.pos.lerpVectors(pathPts[1], pathPts[2], (p.t - 0.65) / 0.35)
-            flyView.look.lerpVectors(startLook, cabinLook, p.t)
-          } else {
-            anchorWorld(spot, target)
-            end.copy(target).add(new THREE.Vector3(1.4, 0.9, 4.4))
-            flyView.pos.lerpVectors(start, end, p.t)
-            flyView.look.lerpVectors(startLook, target, p.t)
-          }
-        },
-        onComplete: () => {
-          if (spot.cabin) {
-            state.yaw = 0.26
-            state.pitch = 0
-            setMode('cabin')
-          } else {
-            controls.target.copy(target)
-            camera.position.copy(flyView.pos)
-            controls.update()
-            controls.enabled = true
-            setMode('free')
-          }
-        },
-      })
-    }
-
-    // Back to the journey: blend back to the scroll pose at the current scroll position.
-    const back = () => {
-      flyTween?.kill()
-      controls.enabled = false
-      setFocus(null)
-      beginBlend()
-      setMode('scroll')
-      tl.progress(tl.progress())
-    }
-
-    // Free roam from wherever the camera is now.
-    const free = () => {
-      flyTween?.kill()
-      setFocus(null)
-      controls.target.copy(TARGET)
-      camera.position.copy(lastPose.pos)
-      controls.update()
-      controls.enabled = true
-      setMode('free')
-    }
-
-    actions.current = { fly, back, free, paint: (i: number) => paintFn(i) }
-
-    // Callout labels: always visible, always clickable. Pushed apart vertically when they would overlap.
-    const placed: { node: HTMLButtonElement; x: number; y: number; w: number; h: number; side: 'left' | 'right' }[] = []
-    const placeLabels = () => {
-      const W = cv.clientWidth
-      const H = cv.clientHeight
-      placed.length = 0
-      SPOTS.forEach((spot, i) => {
-        const node = labelRefs.current[i]
-        if (!node) return
-        anchorWorld(spot, v).project(camera)
-        if (v.z > 1) { node.style.opacity = '0'; node.style.pointerEvents = 'none'; return }
-        node.style.opacity = '1'
-        node.style.pointerEvents = 'auto'
-        const w = node.offsetWidth
-        const h = node.offsetHeight
-        const x = (v.x * 0.5 + 0.5) * W
-        const y = (-v.y * 0.5 + 0.5) * H
-        const s = x - w < 12 ? 'right' : x + w > W - 12 ? 'left' : spot.side
-        placed.push({ node, x, y, w, h, side: s })
-      })
-      placed.sort((a, b) => a.y - b.y)
-      for (let k = 1; k < placed.length; k++) {
-        const p = placed[k - 1]
-        const q = placed[k]
-        const minY = p.y + p.h / 2 + 8 + q.h / 2
-        if (q.y < minY) q.y = minY
-      }
-      placed.forEach((p) => {
-        const edge = Math.min(Math.max(p.side === 'left' ? p.x - p.w : p.x, 12), W - 12 - p.w)
-        const lx = p.side === 'left' ? edge + p.w : edge
-        const ly = Math.min(Math.max(p.y, 12 + p.h / 2), H - 12 - p.h / 2)
-        p.node.style.flexDirection = p.side === 'left' ? 'row-reverse' : 'row'
-        p.node.style.transform = `translate(${lx}px, ${ly}px) translate(${p.side === 'left' ? '-100%' : '0'}, -50%)`
-      })
+    // Keep the car in frame on narrow screens by pulling the orbit keys back.
+    const fitFactor = () => {
+      const hHalfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect
+      const fitDist = (CAR_LENGTH * 0.62) / hHalfTan
+      return Math.max(1, 1 + Math.max(0, fitDist - 9.5) / 9.5)
     }
 
     let last = performance.now()
     let raf = 0
     let visible = true
+    let glowLevel = 0
     const io = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting }, { threshold: 0 })
     io.observe(el)
 
-    const dir = new THREE.Vector3()
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
       const dt = Math.min((now - last) / 1000, 0.05)
       last = now
       if (!visible || !loaded) return
 
+      const p = tl.progress()
       rig.position.x = state.carX
       rig.rotation.y = state.carRotY
       rig.updateMatrixWorld(true)
-      key.position.x = 4 + state.pointerX * 2
-      cabinLight.intensity = (mode === 'cabin' || state.inside > 0.5) ? 10 : 0
       wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
-      // Pick the camera pose for the current owner.
-      const pos = new THREE.Vector3()
-      const look = new THREE.Vector3()
-      const seated = mode === 'cabin' || (mode === 'scroll' && state.inside > 0.5)
-      if (mode === 'scroll' || mode === 'cabin') {
-        if (seated) {
-          pos.copy(CABIN)
-          dir.set(Math.cos(state.pitch) * Math.cos(state.yaw), Math.sin(state.pitch), -Math.cos(state.pitch) * Math.sin(state.yaw))
-          look.copy(pos).add(dir)
-        } else {
-          const hHalfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect
-          const fitDist = (CAR_LENGTH * 0.62) / hHalfTan
-          const extra = Math.max(0, fitDist - 9.5)
-          pos.set(state.camX, state.camY - state.pointerY * 0.25, state.camZ * (1 + extra / 9.5) + state.pointerX * 0.4)
-          look.set(state.lookX, state.lookY, state.lookZ)
-        }
-        if (blend.t < 1) {
-          pos.lerpVectors(blendFrom.pos, pos, blend.t)
-          look.lerpVectors(blendFrom.look, look, blend.t)
-        }
-        camera.position.copy(pos)
-        camera.lookAt(look)
-      } else if (mode === 'fly') {
-        camera.position.copy(flyView.pos)
-        camera.lookAt(flyView.look)
-      } else {
-        controls.update()
-      }
-      if (mode !== 'free') { lastPose.pos.copy(camera.position); camera.getWorldDirection(dir); lastPose.look.copy(camera.position).add(dir) }
+      // Cabin light fades in as the camera enters and out as it leaves.
+      const seated = p >= SEATED_FROM && p <= SEATED_TO
+      glowLevel = THREE.MathUtils.damp(glowLevel, seated ? 10 : 0, 6, dt)
+      cabinLight.intensity = glowLevel
 
-      placeLabels()
+      const fit = fitFactor()
+      let pose: { pos: THREE.Vector3; look: THREE.Vector3 }
+      if (p <= SEATED_FROM) pose = poseOn(ENTER, p, fit)
+      else if (p < SEATED_TO) pose = { pos: CABIN, look: CABIN_LOOK }
+      else pose = poseOn(EXIT, p, fit)
+      camera.position.copy(pose.pos)
+      camera.lookAt(pose.look)
+
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)
+
+    paintRef.current = (i: number) => {
+      if (!bodyMat) return
+      const col = new THREE.Color(PAINTS[i].hex)
+      gsap.to(bodyMat.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' })
+    }
 
     return () => {
       cancelAnimationFrame(raf)
       io.disconnect()
       ro.disconnect()
-      window.removeEventListener('pointermove', onPointer)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      cv.removeEventListener('pointerdown', onDown)
       trigger.kill()
       tl.kill()
-      flyTween?.kill()
-      controls.dispose()
       renderer.dispose()
       pmrem.dispose()
     }
   }, [])
 
   useEffect(() => {
-    actions.current?.paint(paint)
+    paintRef.current(paint)
   }, [paint, ready])
-
-  const current = SPOTS.find((s) => s.id === focus)
-  const roaming = mode === 'free'
-  const cabinMode = mode === 'cabin'
 
   return (
     <section ref={root} className="relative h-[520vh] w-full bg-[#05070d]" aria-label="Civic Type-R">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(200,16,46,0.22),transparent_60%)]" />
-        <canvas ref={canvas} className={`absolute inset-0 h-full w-full touch-none ${cabinMode ? 'cursor-grab active:cursor-grabbing' : ''}`} />
+        <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
 
         <h2 className="pointer-events-none absolute left-1/2 top-[7vh] -translate-x-1/2 whitespace-nowrap text-center font-black uppercase leading-none tracking-[0.02em] text-white" style={{ fontSize: 'clamp(40px, 8vw, 150px)' }}>
           <TwistText text="Civic Type-R" />
@@ -577,48 +370,6 @@ export default function TypeR() {
         <p className="pointer-events-none absolute left-1/2 top-[calc(7vh+clamp(40px,8vw,150px)+1.5vh)] -translate-x-1/2 whitespace-nowrap text-center font-light tracking-[0.35em] text-[#ff3340]" style={{ fontSize: 'clamp(10px, 1vw, 16px)' }}>
           TRACK-BRED · ROAD-LEGAL
         </p>
-
-        {SPOTS.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            ref={(n) => { labelRefs.current[i] = n }}
-            onClick={() => actions.current?.fly(i)}
-            aria-label={s.label}
-            className="absolute left-0 top-0 flex cursor-pointer items-center gap-2 opacity-0 will-change-transform focus:outline-none"
-          >
-            <span className="block h-px w-[clamp(30px,5vw,90px)] bg-gradient-to-r from-[#ff3340] to-transparent" />
-            <span
-              className={`rounded-sm border px-3 py-1.5 font-semibold tracking-[0.18em] text-white backdrop-blur transition-colors ${focus === s.id ? 'border-[#ff3340] bg-[#3a0d14]/80' : 'border-white/20 bg-black/55 hover:border-[#ff3340]'}`}
-              style={{ fontSize: 'clamp(10px, 1vw, 15px)' }}
-            >
-              {s.label}
-            </span>
-          </button>
-        ))}
-
-        {current && (
-          <div className="absolute bottom-[12vh] left-[4vw] max-w-[min(340px,86vw)] rounded-md border border-white/15 bg-black/70 p-5 backdrop-blur">
-            <p className="text-[10px] font-semibold tracking-[0.3em] text-[#ff3340]">HOTSPOT</p>
-            <h3 className="mt-2 text-xl font-bold text-white">{current.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-white/70">{current.text}</p>
-            <button type="button" onClick={() => actions.current?.back()} className="mt-4 rounded-sm border border-white/30 px-3 py-1.5 text-xs font-semibold tracking-[0.2em] text-white hover:border-[#ff3340] hover:text-[#ff3340]">
-              BACK TO JOURNEY
-            </button>
-          </div>
-        )}
-
-        <div className="absolute right-[4vw] top-[calc(7vh+clamp(40px,8vw,150px)+7vh)] flex flex-col items-end gap-3">
-          {roaming || cabinMode || mode === 'fly' ? (
-            <button type="button" onClick={() => actions.current?.back()} className="rounded-sm border border-white/30 bg-black/50 px-3 py-1.5 text-xs font-semibold tracking-[0.2em] text-white backdrop-blur hover:border-[#ff3340] hover:text-[#ff3340]">
-              BACK TO JOURNEY
-            </button>
-          ) : (
-            <button type="button" onClick={() => actions.current?.free()} className="rounded-sm border border-white/30 bg-black/50 px-3 py-1.5 text-xs font-semibold tracking-[0.2em] text-white backdrop-blur hover:border-[#ff3340] hover:text-[#ff3340]">
-              FREE ROAM
-            </button>
-          )}
-        </div>
 
         <div className="absolute bottom-[7vh] left-1/2 flex -translate-x-1/2 items-center gap-4">
           {PAINTS.map((p, i) => (
@@ -635,7 +386,7 @@ export default function TypeR() {
           <span className="ml-2 font-light tracking-[0.2em] text-white/80" style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>{PAINTS[paint].name.toUpperCase()}</span>
         </div>
         <p className="pointer-events-none absolute bottom-[2.5vh] right-[4vw] text-[10px] tracking-[0.25em] text-white/40">
-          {roaming ? 'DRAG TO ROAM · SCROLL TO ZOOM' : cabinMode ? 'DRAG TO LOOK AROUND' : 'SCROLL TO DRIVE · CLICK A POINT'}
+          SCROLL TO DRIVE
         </p>
       </div>
     </section>
