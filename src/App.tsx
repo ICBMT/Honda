@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import Hero from './hero/Hero'
+import PhoneHero from './hero/PhoneHero'
 import Sensing from './sensing/Sensing'
 import SensingMobile from './sensing/SensingMobile'
 import { startSmoothScroll } from './lib/smooth'
 
 const PHONE_QUERY = '(max-width: 767px)'
 
-// Phones get the swipe carousel; larger screens keep the pinned horizontal scroll.
+// Phones get the portrait hero and the swipe carousel; larger screens keep the desktop layouts.
 function useIsPhone() {
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE_QUERY).matches)
   useEffect(() => {
@@ -19,11 +20,14 @@ function useIsPhone() {
 }
 
 export default function App() {
-  useEffect(() => startSmoothScroll(), [])
   const phone = useIsPhone()
+  useEffect(() => {
+    if (phone) return
+    return startSmoothScroll()
+  }, [phone])
   return (
     <>
-      <Hero />
+      {phone ? <PhoneHero /> : <Hero />}
       {phone ? <SensingMobile /> : <Sensing />}
     </>
   )
