@@ -43,7 +43,7 @@ export default function PhoneHero() {
           <p className="slide-reveal text-[11px] font-light tracking-[0.3em] text-white/90" style={{ '--d': 1 } as React.CSSProperties}>
             WHERE CLASS MEETS THRILL
           </p>
-          <h1 className="slide-reveal mt-2 text-[30vw] font-semibold leading-none tracking-tight" style={{ '--d': 2 } as React.CSSProperties}>
+          <h1 className="slide-reveal mt-2 text-[27vw] font-semibold leading-none tracking-tight" style={{ '--d': 2 } as React.CSSProperties}>
             CIVIC
           </h1>
         </div>
