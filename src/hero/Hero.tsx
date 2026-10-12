@@ -105,12 +105,13 @@ export default function Hero() {
   }, [])
 
   return (
-    <section ref={root} className="relative min-h-screen w-full overflow-hidden bg-[#05070d] grid place-items-center">
+    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid place-items-center">
       <div
         data-stage
         className="relative overflow-hidden"
         style={{
-          width: 'min(100vw, 135vh)',
+          width: 'max(100vw, calc(100vh * 1.3523))',
+          flex: 'none',
           aspectRatio: `${STAGE.w} / ${STAGE.h}`,
           containerType: 'inline-size',
         }}
