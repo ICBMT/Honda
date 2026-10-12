@@ -105,7 +105,7 @@ export default function Hero() {
   }, [])
 
   return (
-    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid grid-cols-[minmax(0,1fr)] place-items-center">
+    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#05070d] grid grid-cols-[minmax(0,1fr)] justify-items-center items-start">
       <div data-header className="fixed left-[3vw] top-[4vh] z-10 text-white">
         <div className="font-extrabold tracking-wide text-[#e0202a]" style={{ fontSize: 'clamp(28px, 4.2vw, 96px)', lineHeight: 1 }}>HONDA</div>
         <div className="mt-[0.6vw] font-light italic" style={{ fontSize: 'clamp(11px, 1.2vw, 26px)' }}>The Power of Dreams</div>
@@ -120,6 +120,7 @@ export default function Hero() {
         style={{
           width: 'max(100vw, calc(100vh * 1.3523))',
           flex: 'none',
+          marginTop: 'calc((100vh - max(100vw / 1.3523, 100vh)) * 0.25)',
           aspectRatio: `${STAGE.w} / ${STAGE.h}`,
           containerType: 'inline-size',
         }}
