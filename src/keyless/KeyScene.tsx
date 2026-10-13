@@ -42,18 +42,27 @@ export default function KeyScene() {
           <p>UNLOCK THE CAR.</p>
         </div>
 
-        {/* Card reader: light side face above, solid front face below */}
-        <div className="absolute" style={{ left: '33%', top: '66%', width: '42%', height: '7%', background: 'linear-gradient(90deg, #c4c9d0, #8a9099 60%, #5d636c)' }} />
+        {/* Card reader: premium matte block, bevelled top edge, brushed grain and a soft sheen */}
+        <div className="absolute" style={{ left: '33%', top: '66%', width: '42%', height: '7%', background: 'linear-gradient(180deg, #d6dbe2 0%, #9aa1ab 45%, #5f666f 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.35)' }} />
         <div
-          className="absolute"
+          className="absolute overflow-hidden"
           style={{
             left: '32.1%', top: '73.1%', width: '48.9%', height: '24.9%',
-            background: 'linear-gradient(180deg, #3b3f47 0%, #2a2d34 45%, #1c1e23 100%)',
-            boxShadow: '0 1.5cqh 3cqh rgba(0,0,0,0.45)',
+            background: 'linear-gradient(180deg, #41464f 0%, #2c3038 22%, #22252c 60%, #181a1f 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), inset 1px 0 0 rgba(255,255,255,0.08), inset 0 -2px 4px rgba(0,0,0,0.6), 0 3cqh 6cqh rgba(0,0,0,0.6)',
           }}
         >
-          <div className="absolute inset-y-0 left-0 w-[2.2%] bg-gradient-to-r from-[#9ca2aa] to-transparent" />
+          {/* brushed grain */}
+          <div className="absolute inset-0 opacity-[0.35] mix-blend-overlay" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0) 1px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0) 3px)' }} />
+          {/* soft diagonal sheen */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.09) 46%, rgba(255,255,255,0) 60%)' }} />
+          {/* lit left edge */}
+          <div className="absolute inset-y-0 left-0 w-[1.6%]" style={{ background: 'linear-gradient(90deg, rgba(200,206,214,0.55), rgba(200,206,214,0))' }} />
+          {/* soft falloff at the bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-[30%]" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.35), rgba(0,0,0,0))' }} />
         </div>
+        {/* soft floor shadow under the reader */}
+        <div className="absolute" style={{ left: '30%', top: '97%', width: '52%', height: '4%', background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 70%)' }} />
 
         {/* Card key: long edge vertical, tilted, floating and turning in a loop */}
         <div className="absolute" style={{ left: '48.25%', top: '19.05%', width: '16.5%', height: '46.8%', transform: 'rotate(5.5deg)' }}>
@@ -70,27 +79,33 @@ export default function KeyScene() {
           </div>
         </div>
 
-        {/* Top hand: from the right edge, turned with the print */}
-        <div className="sk-reach-r pointer-events-none absolute" style={{ left: '90.5%', top: '52%', width: 0, height: 0 }}>
-          <img
-            src={handRight}
-            alt=""
-            draggable={false}
-            className="absolute max-w-none select-none object-contain"
-            style={{ width: '46cqh', height: '22.7cqh', left: '-23cqh', top: '-11.35cqh', transform: 'rotate(90deg)' }}
-          />
-        </div>
+        {/* Top hand: enters from the right, fingers reaching down-left toward the card */}
+        <img
+          src={handRight}
+          alt=""
+          draggable={false}
+          className="sk-reach-r pointer-events-none absolute max-w-none select-none"
+          style={{
+            width: '30cqw', left: '66%', top: '24%', transform: 'rotate(-18deg)',
+            WebkitMaskImage: 'linear-gradient(90deg, #000 70%, transparent 100%)',
+            maskImage: 'linear-gradient(90deg, #000 70%, transparent 100%)',
+          } as React.CSSProperties}
+        />
 
-        {/* Bottom hand: from the left, reaching up toward the card */}
-        <div className="sk-reach-l pointer-events-none absolute" style={{ left: '28.5%', top: '48.5%', width: 0, height: 0 }}>
-          <img
-            src={handLeft}
-            alt=""
-            draggable={false}
-            className="absolute max-w-none select-none object-contain"
-            style={{ width: '33cqh', height: '28cqh', left: '-16.5cqh', top: '-14cqh', transform: 'rotate(90deg)' }}
-          />
-        </div>
+        {/* Bottom hand: enters from the left, palm up, fingers reaching up-right toward the card */}
+        <img
+          src={handLeft}
+          alt=""
+          draggable={false}
+          className="sk-reach-l pointer-events-none absolute max-w-none select-none"
+          style={{
+            width: '34cqw', left: '2%', top: '40%', transform: 'rotate(-32deg)',
+            WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 25%), linear-gradient(0deg, transparent 0%, #000 25%)',
+            WebkitMaskComposite: 'source-in',
+            maskImage: 'linear-gradient(90deg, transparent 0%, #000 25%), linear-gradient(0deg, transparent 0%, #000 25%)',
+            maskComposite: 'intersect',
+          } as React.CSSProperties}
+        />
       </div>
     </div>
   )
