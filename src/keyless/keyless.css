@@ -1,61 +1,55 @@
-/* Section 4 (smart key). Animations are CSS so they run off the main thread where possible. */
+/* Section 4 — smart key. Motion only; layout lives in the components. */
 
-/* Part 1: card key */
-.sk-float { animation: sk-float 6s ease-in-out infinite; }
 @keyframes sk-float {
-  0%, 100% { transform: translateY(-1.6vh); }
-  50% { transform: translateY(1.6vh); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.4vh); }
 }
-.sk-spin { animation: sk-spin 14s linear infinite; transform-style: preserve-3d; }
 @keyframes sk-spin {
-  from { transform: rotateX(12deg) rotateY(0deg); }
-  to { transform: rotateX(12deg) rotateY(360deg); }
+  from { transform: rotateY(-28deg) rotateZ(-4deg); }
+  50% { transform: rotateY(28deg) rotateZ(3deg); }
+  to { transform: rotateY(-28deg) rotateZ(-4deg); }
 }
-.sk-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.sk-back { transform: rotateY(180deg); }
-
-/* Hands reach toward the card and draw back, slowly. */
-.sk-hand-l { animation: sk-reach-l 9s ease-in-out infinite alternate; }
 @keyframes sk-reach-l {
-  from { transform: translate(0, 0) rotate(-8deg); }
-  to { transform: translate(16vw, -9vh) rotate(4deg); }
+  0%, 100% { transform: translate(0, 0) rotate(-8deg); }
+  50% { transform: translate(4vw, -1.5vh) rotate(-4deg); }
 }
-.sk-hand-r { animation: sk-reach-r 9s ease-in-out infinite alternate; }
 @keyframes sk-reach-r {
-  from { transform: translate(0, 0) rotate(8deg); }
-  to { transform: translate(-13vw, 6vh) rotate(-3deg); }
+  0%, 100% { transform: translate(0, 0) rotate(8deg) scaleX(-1); }
+  50% { transform: translate(-3vw, 1.5vh) rotate(4deg) scaleX(-1); }
 }
-
-/* Part 2: red panel, key in the pocket */
-.sk-pocket { animation: sk-pocket 5s ease-in-out infinite; }
 @keyframes sk-pocket {
-  0%, 100% { transform: translate(6vw, -3vh) rotate(-8deg); }
-  50% { transform: translate(0, 0) rotate(-14deg); }
+  0%, 100% { transform: translateY(0) rotate(-14deg); }
+  50% { transform: translateY(-2.5vh) rotate(-10deg); }
 }
-
-/* Part 2: fob buttons take turns lighting up */
-.sk-btn { animation: sk-btn 8s ease-in-out infinite; animation-delay: calc(var(--i) * 2s); }
 @keyframes sk-btn {
-  0%, 100% { fill: #1a1d24; }
-  5%, 10% { fill: #ff3340; }
-  15% { fill: #1a1d24; }
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
-
-/* Part 2: proximity ring around the door handle */
-.sk-ring { animation: sk-ring 2.6s ease-out infinite; transform-origin: center; transform-box: fill-box; }
-.sk-ring-2 { animation-delay: 1.3s; }
 @keyframes sk-ring {
-  0% { transform: scale(0.6); opacity: 0.9; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
 }
-
-/* Part 2: the four key variants rise and fall in turn */
-.sk-variant { animation: sk-variant 4.8s ease-in-out infinite; animation-delay: calc(var(--i) * 0.35s); }
 @keyframes sk-variant {
-  0%, 100% { transform: translateY(2.5vh); opacity: 0.55; }
-  40%, 60% { transform: translateY(0); opacity: 1; }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.8vh); }
 }
 
-/* Part 2: bullets appear one after another once the panel is on screen */
-.sk-bullet { opacity: 0; transform: translateX(-2vw); transition: opacity 0.7s ease, transform 0.7s ease; transition-delay: calc(var(--i) * 0.35s); }
+.sk-float { animation: sk-float 4.2s ease-in-out infinite; }
+.sk-spin { animation: sk-spin 7s ease-in-out infinite; transform-style: preserve-3d; }
+.sk-reach-l { animation: sk-reach-l 9s ease-in-out infinite; }
+.sk-reach-r { animation: sk-reach-r 9s ease-in-out infinite; }
+.sk-pocket { animation: sk-pocket 5s ease-in-out infinite; }
+.sk-ring { transform-origin: center; transform-box: fill-box; animation: sk-ring 2.6s ease-out infinite; }
+.sk-ring-2 { animation-delay: 1.3s; }
+.sk-variant { animation: sk-variant 4s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.35s); }
+.sk-btn { animation: sk-btn 3s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.5s); }
+
+/* Bullets step in once the panel is on screen (EntryScene adds .sk-in). */
+.sk-bullet { opacity: 0; transform: translateX(-1.5vw); transition: opacity .6s ease, transform .6s ease; transition-delay: calc(var(--i, 0) * 0.25s); }
 .sk-in .sk-bullet { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-float, .sk-spin, .sk-reach-l, .sk-reach-r, .sk-pocket, .sk-ring, .sk-variant, .sk-btn { animation: none; }
+  .sk-bullet { opacity: 1; transform: none; transition: none; }
+}
