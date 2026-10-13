@@ -7,13 +7,13 @@ import rsLogo from './assets/rs-logo.png'
 import streetBg from './assets/street-bg.jpg'
 
 const MODEL_URL = '/models/honda_civic_rs.glb'
-const CAR_LENGTH = 4.6
+const CAR_LENGTH = 5.7 // about 25% larger than before, so the car fills the right side as in the print
 const TYRE_RE = /tire|tyre/i
 const WHEELS = ['FL', 'FR', 'RL', 'RR']
 const TARGET = new THREE.Vector3(0, 0.62, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
-const CAM_DIST = 12.6
+const CAM_DIST = 14.5
 
 // Final pose (from the print): the front faces the camera, angled toward the left of the frame.
 const YAW_END = -1.81
@@ -136,7 +136,7 @@ export default function CivicRS() {
       const h = cv.clientHeight
       renderer.setSize(w, h, false)
       camera.aspect = w / h
-      const dist = CAM_DIST * Math.max(1, 1.1 / camera.aspect)
+      const dist = CAM_DIST * Math.max(1, 0.9 / camera.aspect)
       camera.position.copy(TARGET).addScaledVector(CAM_DIR, dist)
       camera.lookAt(TARGET)
       camera.updateProjectionMatrix()
@@ -180,6 +180,26 @@ export default function CivicRS() {
       if (noseSum < 0) model.rotation.y += Math.PI
       model.updateMatrixWorld(true)
       rig.add(model)
+
+      // Contact shadow: a soft dark pool under the tyres, so the car sits on the road.
+      const sc = document.createElement('canvas')
+      sc.width = 256
+      sc.height = 128
+      const g = sc.getContext('2d')!
+      const grad = g.createRadialGradient(128, 64, 0, 128, 64, 128)
+      grad.addColorStop(0, 'rgba(0,0,0,0.85)')
+      grad.addColorStop(0.6, 'rgba(0,0,0,0.45)')
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, 256, 128)
+      const contactTex = new THREE.CanvasTexture(sc)
+      const contact = new THREE.Mesh(
+        new THREE.PlaneGeometry(CAR_LENGTH * 1.25, CAR_LENGTH * 0.5),
+        new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false }),
+      )
+      contact.rotation.x = -Math.PI / 2
+      contact.position.y = 0.004
+      rig.add(contact)
       rig.updateMatrixWorld(true)
 
       // Each wheel gets a pivot on its own hub, so the whole wheel turns about its axle.
