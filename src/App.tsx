@@ -37,7 +37,7 @@ export default function App() {
         <TypeR />
       </LazyMount>
       <Keyless />
-      <LazyMount placeholderClass="h-[380vh] w-full bg-[#0b0d12]">
+      <LazyMount placeholderClass="h-screen w-full bg-[#0b0d12]">
         <CivicRS />
       </LazyMount>
     </>
