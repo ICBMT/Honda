@@ -1,0 +1,61 @@
+/* Section 4 (smart key). Animations are CSS so they run off the main thread where possible. */
+
+/* Part 1: card key */
+.sk-float { animation: sk-float 6s ease-in-out infinite; }
+@keyframes sk-float {
+  0%, 100% { transform: translateY(-1.6vh); }
+  50% { transform: translateY(1.6vh); }
+}
+.sk-spin { animation: sk-spin 14s linear infinite; transform-style: preserve-3d; }
+@keyframes sk-spin {
+  from { transform: rotateX(12deg) rotateY(0deg); }
+  to { transform: rotateX(12deg) rotateY(360deg); }
+}
+.sk-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.sk-back { transform: rotateY(180deg); }
+
+/* Hands reach toward the card and draw back, slowly. */
+.sk-hand-l { animation: sk-reach-l 9s ease-in-out infinite alternate; }
+@keyframes sk-reach-l {
+  from { transform: translate(0, 0) rotate(-8deg); }
+  to { transform: translate(16vw, -9vh) rotate(4deg); }
+}
+.sk-hand-r { animation: sk-reach-r 9s ease-in-out infinite alternate; }
+@keyframes sk-reach-r {
+  from { transform: translate(0, 0) rotate(8deg); }
+  to { transform: translate(-13vw, 6vh) rotate(-3deg); }
+}
+
+/* Part 2: red panel, key in the pocket */
+.sk-pocket { animation: sk-pocket 5s ease-in-out infinite; }
+@keyframes sk-pocket {
+  0%, 100% { transform: translate(6vw, -3vh) rotate(-8deg); }
+  50% { transform: translate(0, 0) rotate(-14deg); }
+}
+
+/* Part 2: fob buttons take turns lighting up */
+.sk-btn { animation: sk-btn 8s ease-in-out infinite; animation-delay: calc(var(--i) * 2s); }
+@keyframes sk-btn {
+  0%, 100% { fill: #1a1d24; }
+  5%, 10% { fill: #ff3340; }
+  15% { fill: #1a1d24; }
+}
+
+/* Part 2: proximity ring around the door handle */
+.sk-ring { animation: sk-ring 2.6s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+.sk-ring-2 { animation-delay: 1.3s; }
+@keyframes sk-ring {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Part 2: the four key variants rise and fall in turn */
+.sk-variant { animation: sk-variant 4.8s ease-in-out infinite; animation-delay: calc(var(--i) * 0.35s); }
+@keyframes sk-variant {
+  0%, 100% { transform: translateY(2.5vh); opacity: 0.55; }
+  40%, 60% { transform: translateY(0); opacity: 1; }
+}
+
+/* Part 2: bullets appear one after another once the panel is on screen */
+.sk-bullet { opacity: 0; transform: translateX(-2vw); transition: opacity 0.7s ease, transform 0.7s ease; transition-delay: calc(var(--i) * 0.35s); }
+.sk-in .sk-bullet { opacity: 1; transform: none; }
