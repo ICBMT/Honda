@@ -3,6 +3,9 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { Line2 } from 'three/examples/jsm/lines/Line2.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import TwistText from '../lib/TwistText'
@@ -48,7 +51,7 @@ const HOLD: { t: number; look: THREE.Vector3 }[] = [
 // Exit: out through the left side of the windshield and past the front-left fender.
 const ORBIT_FROM = 0.88
 const ROLL_FROM = 0.94          // the orbit ends here and the car starts rolling on the road
-const ROLL_DIST = 320           // road distance covered from ROLL_FROM to the end of the journey
+const ROLL_SPEED = 6            // world units per second the road runs past when the loop plays
 const ROAD_TILE = 10            // world units per repeat of the lane markings
 const EXIT: Key[] = [
   { t: 0.8, pos: CABIN, look: WINDSHIELD_LOOK },
@@ -59,13 +62,10 @@ const ORBIT_LOOK = new THREE.Vector3(0, 0.95, 0)
 
 // Then one full 360-degree orbit around the outside of the car. It starts at the front-left fender and
 // ends back on the left side, pulling out to the framing distance as it goes.
-// After that the camera holds on the left side while the car rolls past on the road.
-function roadPose(p: number, fit: number) {
-  const q = THREE.MathUtils.clamp((p - ROLL_FROM) / (1 - ROLL_FROM), 0, 1)
-  const e = 0.5 - 0.5 * Math.cos(Math.PI * q)
-  const from = new THREE.Vector3(0, 1.25, -9.5 * fit)
-  const to = new THREE.Vector3(1.5, 0.8, -8.5 * fit)
-  return { pos: from.lerp(to, e), look: ORBIT_LOOK.clone() }
+// After that the camera holds on the left side while the car loops on the road.
+function roadPose(t: number, fit: number) {
+  // Held on the left side with a slow drift, so the loop breathes.
+  return { pos: new THREE.Vector3(Math.sin(t * 0.2) * 0.35, 1.25, -9.5 * fit), look: ORBIT_LOOK.clone() }
 }
 
 function orbitPose(p: number, fit: number, start: THREE.Vector3) {
@@ -251,7 +251,7 @@ export default function TypeR() {
     cabinLight.position.copy(CABIN).add(new THREE.Vector3(0, 0.1, 0))
     rig.add(cabinLight)
 
-    // Road: scroll-driven. Appears at the end, with lane markings that move as the car rolls.
+    // Road: appears as the journey ends, then loops on its own clock.
     const roadCv = document.createElement('canvas')
     roadCv.width = roadCv.height = 512
     const rctx = roadCv.getContext('2d')!
@@ -279,12 +279,12 @@ export default function TypeR() {
     road.receiveShadow = true
     scene.add(road)
 
-    // Airflow: streamlines in the car's own frame. Each one is a line whose visible part slides from nose to tail.
+    // Airflow: layered glowing streamlines, like a wind-tunnel shot. Rows bend over and around the body,
+    // and a dashed streak slides along each row. Smoke trails from the tail.
     const aero = new THREE.Group()
     rig.add(aero)
-    const AERO_N = 90
-    const AERO_TAIL = 16
-    const streams: { geo: THREE.BufferGeometry; mat: THREE.LineBasicMaterial; phase: number; speed: number }[] = []
+    const lineMats: LineMaterial[] = []
+    const aeroRows: { mat: LineMaterial; speed: number; alpha: number }[] = []
     const profile: [number, number][] = [[-6, 0.4], [-2.4, 0.95], [-1.7, 1.1], [-0.9, 1.42], [0.1, 1.42], [0.9, 1.0], [2.0, 0.85], [2.4, 0.6], [6, 0.4]]
     const topY = (x: number) => {
       for (let i = 0; i < profile.length - 1; i++) {
@@ -298,27 +298,50 @@ export default function TypeR() {
       const t = THREE.MathUtils.clamp(v, 0, 1)
       return t * t * (3 - 2 * t)
     }
-    const addStream = (z0: number, lift: number, h0: number, color: string, phase: number, speed: number) => {
-      const pts: THREE.Vector3[] = []
-      for (let i = 0; i < AERO_N; i++) {
-        const x = 6.5 - (13 * i) / (AERO_N - 1)
-        const w = smooth01((4.6 - Math.abs(x)) / 2)
-        const y = h0 + (topY(x) + lift - h0) * w
-        const z = z0 + Math.sign(z0) * 0.3 * w
-        pts.push(new THREE.Vector3(x, y, z))
+    const addRow = (z0: number, y0: number, color: string, width: number, speed: number, dash: number, alpha: number) => {
+      const N = 120
+      const pos: number[] = []
+      const deflect = Math.abs(z0) < 0.95 ? 1 : 0.35
+      for (let i = 0; i < N; i++) {
+        const x = 7 - (14 * i) / (N - 1)
+        const w = smooth01((4.4 - Math.abs(x)) / 2.4)
+        const top = topY(x) + 0.14
+        const y = y0 + Math.max(0, top - y0) * w * deflect
+        const z = z0 + Math.sign(z0) * 0.4 * w
+        pos.push(x, y, z)
       }
-      const geo = new THREE.BufferGeometry().setFromPoints(pts)
-      geo.setDrawRange(0, 0)
-      const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false })
-      aero.add(new THREE.Line(geo, mat))
-      streams.push({ geo, mat, phase, speed })
+      const geo = new LineGeometry()
+      geo.setPositions(pos)
+      const mat = new LineMaterial({ color, linewidth: width, dashed: true, dashSize: dash, gapSize: 0.35, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })
+      mat.resolution.set(cv.clientWidth || 1, cv.clientHeight || 1)
+      const line = new Line2(geo, mat)
+      line.computeLineDistances()
+      aero.add(line)
+      lineMats.push(mat)
+      aeroRows.push({ mat, speed, alpha })
     }
-    const over = [-0.6, -0.3, 0, 0.3, 0.6]
-    over.forEach((z, i) => addStream(z, i % 2 ? 0.2 : 0.34, 0.45, '#ff3340', i / over.length, 0.42))
-    const sides = [-1.15, -1.45, 1.15, 1.45]
-    sides.forEach((z, i) => addStream(z, 0, i % 2 ? 0.55 : 0.9, '#8fd8ff', 0.1 + i * 0.23, 0.36))
+    for (let y0 = 0.15; y0 <= 2.45; y0 += 0.16) {
+      addRow(-1.4, y0, '#3ab4ff', 1.6, 0.9, 1.6, 0.9)
+      addRow(1.9, y0, '#7fd8ff', 1.2, 0.6, 1.2, 0.55)
+    }
+
+    const smokeCv = document.createElement('canvas')
+    smokeCv.width = smokeCv.height = 128
+    const sctx = smokeCv.getContext('2d')!
+    const sg = sctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+    sg.addColorStop(0, 'rgba(255,255,255,0.9)')
+    sg.addColorStop(0.45, 'rgba(255,255,255,0.35)')
+    sg.addColorStop(1, 'rgba(255,255,255,0)')
+    sctx.fillStyle = sg
+    sctx.fillRect(0, 0, 128, 128)
+    const smokeTex = new THREE.CanvasTexture(smokeCv)
+    const puffs: { sp: THREE.Sprite; seed: number }[] = []
+    for (let i = 0; i < 26; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: '#8fdcff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }))
+      aero.add(sp)
+      puffs.push({ sp, seed: i / 26 })
+    }
     let wheelR = 0.34
-    let rolled = 0
 
     let bodyMat: THREE.MeshStandardMaterial | null = null
     const wheels: THREE.Mesh[] = []
@@ -331,6 +354,7 @@ export default function TypeR() {
       const w = cv.clientWidth
       const h = cv.clientHeight
       renderer.setSize(w, h, false)
+      lineMats.forEach((m) => m.resolution.set(w, h))
       camera.aspect = w / h
       camera.updateProjectionMatrix()
     }
@@ -433,23 +457,25 @@ export default function TypeR() {
       rig.updateMatrixWorld(true)
       wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
-      // Rolling on the road is driven by scroll: wheels turn and lane markings slide by the same distance.
-      const roadDist = Math.max(0, p - ROLL_FROM) * ROLL_DIST
-      const dRoad = roadDist - rolled
-      rolled = roadDist
-      wheels.forEach((w) => { w.rotation.z -= dRoad / wheelR })
-      roadTex.offset.x += dRoad / ROAD_TILE
-      roadMat.opacity = smooth01((p - 0.93) / 0.02)
-
-      // Airflow streamlines flow nose to tail along the car.
+      // The road appears as the journey ends, then loops on its own clock: wheels, lane markings and airflow.
       const tNow = now / 1000
-      const aeroK = smooth01((p - 0.945) / 0.02)
-      streams.forEach((st) => {
-        const head = ((tNow * st.speed + st.phase) % 1) * (AERO_N + AERO_TAIL)
-        const start = Math.max(0, Math.floor(head - AERO_TAIL))
-        const end = Math.min(AERO_N, Math.floor(head))
-        st.geo.setDrawRange(start, Math.max(0, end - start))
-        st.mat.opacity = aeroK * 0.85
+      const roadK = smooth01((p - 0.92) / 0.02)
+      const aeroK = smooth01((p - 0.93) / 0.02)
+      roadMat.opacity = roadK
+      const step = dt * roadK * ROLL_SPEED
+      wheels.forEach((w) => { w.rotation.z -= step / wheelR })
+      roadTex.offset.x += step / ROAD_TILE
+      aeroRows.forEach((r) => {
+        r.mat.dashOffset -= dt * r.speed
+        r.mat.opacity = aeroK * r.alpha
+      })
+      puffs.forEach((pf) => {
+        const life = (tNow * 0.3 + pf.seed) % 1
+        pf.sp.position.set(-2.1 - life * 4.2, 0.55 + life * 0.7, (pf.seed - 0.5) * 1.0 + Math.sin(tNow * 0.7 + pf.seed * 20) * 0.05)
+        const sz = 0.3 + life * 1.0
+        pf.sp.scale.set(sz, sz, 1)
+        const pm = pf.sp.material as THREE.SpriteMaterial
+        pm.opacity = aeroK * (1 - life) * 0.22
       })
 
       // Cabin light fades in as the camera enters and out as it leaves.
@@ -463,7 +489,7 @@ export default function TypeR() {
       else if (p < SEATED_TO) pose = { pos: CABIN, look: lookOn(HOLD, p) }
       else if (p < ORBIT_FROM) pose = poseOn(EXIT, p, fit)
       else if (p < ROLL_FROM) pose = orbitPose(p, fit, poseOn(EXIT, ORBIT_FROM, fit).pos)
-      else pose = roadPose(p, fit)
+      else pose = roadPose(tNow, fit)
       camera.position.copy(pose.pos)
       camera.lookAt(pose.look)
 
@@ -493,7 +519,7 @@ export default function TypeR() {
   }, [paint, ready])
 
   return (
-    <section ref={root} className="relative h-[600vh] w-full bg-[#05070d]" aria-label="Civic Type-R">
+    <section ref={root} className="relative h-[560vh] w-full bg-[#05070d]" aria-label="Civic Type-R">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(200,16,46,0.22),transparent_60%)]" />
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
