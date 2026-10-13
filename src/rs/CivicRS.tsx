@@ -15,8 +15,8 @@ const TARGET = new THREE.Vector3(0, 0.62, 0)
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
 const CAM_DIST = 12.6
 
-// Final pose (from the print): nose points left, slightly toward the camera.
-const YAW_END = Math.PI + 0.64 - Math.PI * 2
+// Final pose (from the print): the front faces the camera, angled toward the left of the frame.
+const YAW_END = -1.81
 // Entry: the car is sliding sideways (nose toward the camera) and straightens out as it settles.
 const YAW_START = -Math.PI / 2
 const START_X = 7.5
@@ -146,13 +146,7 @@ export default function CivicRS() {
     ro.observe(cv)
 
     let loaded = false
-    let visible = false
     let introStart = -1
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting
-      if (visible && loaded && introStart < 0) introStart = performance.now()
-    }, { threshold: 0.25 })
-    io.observe(cv)
 
     const loader = new GLTFLoader()
     loader.setMeshoptDecoder(MeshoptDecoder)
@@ -205,7 +199,6 @@ export default function CivicRS() {
       }
 
       loaded = true
-      if (visible && introStart < 0) introStart = performance.now()
       setReady(true)
     })
 
@@ -218,7 +211,11 @@ export default function CivicRS() {
       raf = requestAnimationFrame(frame)
       const dt = Math.min((now - last) / 1000, 0.05)
       last = now
-      if (!visible || !loaded) return
+      if (!loaded) return
+      // Run only while the section is on screen; the intro starts the first time it is.
+      const r = cv.getBoundingClientRect()
+      const onScreen = r.bottom > 0 && r.top < window.innerHeight
+      if (!onScreen) return
       if (introStart < 0) introStart = now
 
       // Path: roll in from the right, sliding and settling into the print's pose.
@@ -236,11 +233,11 @@ export default function CivicRS() {
       const moving = Math.hypot(vx, vz) > 0.05
 
       // Wheels: spinning hard while sliding, then burning in place after the car settles.
-      const omega = 8 + 26 * (1 - k)
+      const omega = 14 + 26 * (1 - k)
       wheelPivots.forEach(({ pivot }) => { pivot.rotation.z -= dt * omega })
 
       // Smoke: heavy while drifting in, a steady plume from the rear tyres once settled.
-      const rate = moving ? 90 : 34
+      const rate = moving ? 90 : 40
       emitAcc += rate * dt
       const rears = wheelPivots.filter((w) => w.rear)
       while (emitAcc >= 1 && rears.length) {
@@ -283,7 +280,6 @@ export default function CivicRS() {
 
     return () => {
       cancelAnimationFrame(raf)
-      io.disconnect()
       ro.disconnect()
       scene.traverse((o) => {
         const m = o as THREE.Mesh
