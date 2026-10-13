@@ -12,7 +12,7 @@ import TwistText from '../lib/TwistText'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const MODEL_URL = '/models/honda_civic_type_r.glb'
+import { modelSrc } from '../lib/preload'
 const CAR_LENGTH = 4.6
 const CAR_RE = /body_white_ext|tire|tyre|headlight/i
 const TYRE_RE = /tire|tyre/i
@@ -371,7 +371,7 @@ export default function TypeR() {
 
     const loader = new GLTFLoader()
     loader.setMeshoptDecoder(MeshoptDecoder)
-    loader.load(MODEL_URL, (gltf) => {
+    loader.load(modelSrc(), (gltf) => {
       const model = gltf.scene
       model.updateMatrixWorld(true)
 
