@@ -16,7 +16,7 @@ const wheelPart = (w: string) => new RegExp('(^|[^A-Za-z])' + w + '_+(WHEEL|RIMS
 const TARGET = new THREE.Vector3(0, 1.4, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
-const CAM_DIST = 16 // closer camera: the car stops right in front of the view, as in the print
+const CAM_DIST = 17 // slightly further back so the car clears the copy and stays inside the frame
 
 // Final pose (from the print): the front faces the camera, angled toward the left of the frame.
 const YAW_END = -1.81
@@ -142,6 +142,9 @@ export default function CivicRS() {
       const dist = CAM_DIST * Math.max(1, 0.9 / camera.aspect)
       camera.position.copy(TARGET).addScaledVector(CAM_DIR, dist)
       camera.lookAt(TARGET)
+      // Wide screens: slide the view so the car sits on the right, clear of the copy on the left.
+      const shift = w >= 768 && w / h >= 1 ? w * 0.2 : 0
+      camera.setViewOffset(w, h, -shift, 0, w, h)
       camera.updateProjectionMatrix()
     }
     resize()
@@ -326,32 +329,34 @@ export default function CivicRS() {
   }, [])
 
   return (
-    <section ref={root} className="relative h-screen w-full overflow-hidden bg-[#0b0d12] text-white" aria-label="Civic RS">
+    <section
+      ref={root}
+      className="relative flex min-h-svh w-full flex-col overflow-hidden bg-[#0b0d12] text-white md:block md:h-screen"
+      aria-label="Civic RS"
+    >
       {/* Whole-section background: the blurred street from the print */}
       <img src={streetBg} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d12]/70 via-[#0b0d12]/25 to-transparent" />
 
-      <div className="relative flex h-full w-full">
-        {/* Left: logo and copy */}
-        <div className="flex w-[44%] flex-col justify-center pl-[6vw] pr-[3vw]">
-          <img src={rsLogo} alt="RS" draggable={false} className="w-[min(30vw,420px)] select-none" />
-          <h2 className="mt-[3vh] text-[clamp(22px,2.6vw,44px)] font-bold tracking-[0.02em]">1.5 VTEC TURBO</h2>
-          <p className="mt-[2vh] max-w-[30vw] text-[clamp(11px,0.95vw,16px)] leading-relaxed tracking-[0.02em] text-white/85">
-            A 1.5-liter VTEC TURBO 176 HP engine with Programmed Fuel Injection technology and a Turbocharger that provides enhanced acceleration and excellent fuel economy.
-          </p>
-        </div>
-
-        {/* Right: the Civic RS */}
-        <div className="relative flex-1">
-          <canvas
-            ref={canvas}
-            className="absolute inset-0 h-full w-full transition-opacity duration-700"
-            style={{ opacity: ready ? 1 : 0 }}
-          />
-        </div>
+      {/* Copy: stacked above the car on phones and tablets, on the left on desktop */}
+      <div className="relative z-10 flex flex-col justify-start px-6 pb-4 pt-[10svh] sm:px-10 md:absolute md:left-0 md:top-0 md:h-full md:w-[44%] md:justify-center md:pb-0 md:pl-[6vw] md:pr-[3vw] md:pt-0">
+        <img src={rsLogo} alt="RS" draggable={false} className="w-[min(60vw,420px)] select-none md:w-[min(30vw,420px)]" />
+        <h2 className="mt-[3svh] text-[clamp(22px,5vw,44px)] font-bold tracking-[0.02em] md:text-[clamp(22px,2.6vw,44px)]">1.5 VTEC TURBO</h2>
+        <p className="mt-[2svh] max-w-[90vw] text-[clamp(13px,3.4vw,16px)] leading-relaxed tracking-[0.02em] text-white/85 sm:max-w-[60vw] md:max-w-[30vw] md:text-[clamp(11px,0.95vw,16px)]">
+          A 1.5-liter VTEC TURBO 176 HP engine with Programmed Fuel Injection technology and a Turbocharger that provides enhanced acceleration and excellent fuel economy.
+        </p>
       </div>
 
-      <p className="absolute bottom-[6vh] right-[4vw] text-[clamp(18px,2.2vw,38px)] font-bold italic tracking-[0.02em] text-white">
+      {/* The Civic RS: the canvas covers the whole section, so the car is never cut off at a column edge */}
+      <div className="relative z-0 h-[62svh] w-full min-h-[320px] md:absolute md:inset-0 md:h-full">
+        <canvas
+          ref={canvas}
+          className="absolute inset-0 h-full w-full transition-opacity duration-700"
+          style={{ opacity: ready ? 1 : 0 }}
+        />
+      </div>
+
+      <p className="relative z-10 px-6 pb-[4svh] text-right text-[clamp(18px,5vw,38px)] font-bold italic tracking-[0.02em] text-white sm:px-10 md:absolute md:bottom-[6vh] md:right-[4vw] md:px-0 md:pb-0 md:text-[clamp(18px,2.2vw,38px)]">
         ABSOLUTE THRILL
       </p>
     </section>
