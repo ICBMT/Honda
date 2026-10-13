@@ -9,12 +9,20 @@ import streetBg from './assets/street-bg.jpg'
 const MODEL_URL = '/models/honda_civic_rs.glb'
 const CAR_LENGTH = 4.6
 const TYRE_RE = /tire|tyre/i
+const WHEELS = ['FL', 'FR', 'RL', 'RR']
 const TARGET = new THREE.Vector3(0, 0.62, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
 const CAM_DIST = 12.6
-// Nose points left and slightly toward the camera, as in the print.
-const CAR_YAW = Math.PI + 0.64
+
+// Final pose (from the print): nose points left, slightly toward the camera.
+const YAW_END = Math.PI + 0.64 - Math.PI * 2
+// Entry: the car is sliding sideways (nose toward the camera) and straightens out as it settles.
+const YAW_START = -Math.PI / 2
+const START_X = 7.5
+const START_Z = 2.4
+const INTRO = 3.6 // seconds from the car entering view to settling in place
+const SMOKE_MAX = 160
 
 // Name of a node plus all its ancestors, so a mesh can be matched by the node names above it.
 function chainName(o: THREE.Object3D) {
@@ -24,16 +32,39 @@ function chainName(o: THREE.Object3D) {
   return s
 }
 
-function boundsOf(root: THREE.Object3D, re: RegExp) {
+function boundsOf(root: THREE.Object3D, re: RegExp, wheel?: string) {
   const box = new THREE.Box3()
   let any = false
+  const wheelRe = wheel ? new RegExp('(^|\\s)' + wheel + '_WHEEL') : null
   root.traverse((o) => {
     const m = o as THREE.Mesh
-    if (!m.isMesh || !re.test(chainName(m))) return
+    if (!m.isMesh) return
+    const n = chainName(m)
+    if (!re.test(n) || (wheelRe && !wheelRe.test(n))) return
     box.expandByObject(m)
     any = true
   })
   return any ? box : null
+}
+
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t)
+const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+
+function smokeTexture() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')!
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64)
+  grad.addColorStop(0, 'rgba(235,238,242,0.95)')
+  grad.addColorStop(0.45, 'rgba(210,215,222,0.5)')
+  grad.addColorStop(1, 'rgba(200,205,212,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 128, 128)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
 export default function CivicRS() {
@@ -63,10 +94,10 @@ export default function CivicRS() {
     key.position.set(4, 6, 5)
     key.castShadow = true
     key.shadow.mapSize.set(2048, 2048)
-    key.shadow.camera.left = -5
-    key.shadow.camera.right = 5
-    key.shadow.camera.top = 5
-    key.shadow.camera.bottom = -5
+    key.shadow.camera.left = -6
+    key.shadow.camera.right = 6
+    key.shadow.camera.top = 6
+    key.shadow.camera.bottom = -6
     key.shadow.bias = -0.0005
     scene.add(key)
     const rim = new THREE.DirectionalLight('#ff3340', 3.0)
@@ -77,30 +108,51 @@ export default function CivicRS() {
     scene.add(fill)
 
     // The photo road shows through; this plane only catches the car's shadow.
-    const shadowPlane = new THREE.Mesh(new THREE.CircleGeometry(12, 64), new THREE.ShadowMaterial({ opacity: 0.6 }))
+    const shadowPlane = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.ShadowMaterial({ opacity: 0.6 }))
     shadowPlane.rotation.x = -Math.PI / 2
     shadowPlane.position.y = 0.002
     shadowPlane.receiveShadow = true
     scene.add(shadowPlane)
 
+    // The rig holds the car. It stays at identity while the model is set up, then the intro drives it.
     const rig = new THREE.Group()
-    rig.rotation.y = CAR_YAW
     scene.add(rig)
+    const wheelPivots: { pivot: THREE.Group; rear: boolean }[] = []
+
+    // Tyre smoke: a pool of soft sprites, recycled as they fade.
+    const smokeTex = smokeTexture()
+    const smoke: { sprite: THREE.Sprite; mat: THREE.SpriteMaterial; age: number; life: number; vel: THREE.Vector3; alive: boolean }[] = []
+    for (let i = 0; i < SMOKE_MAX; i++) {
+      const mat = new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, opacity: 0 })
+      const sprite = new THREE.Sprite(mat)
+      sprite.visible = false
+      scene.add(sprite)
+      smoke.push({ sprite, mat, age: 0, life: 1, vel: new THREE.Vector3(), alive: false })
+    }
+    let emitAcc = 0
 
     const resize = () => {
       const w = cv.clientWidth
       const h = cv.clientHeight
       renderer.setSize(w, h, false)
       camera.aspect = w / h
-      // Narrow panels move the camera back so the whole car stays in frame.
       const dist = CAM_DIST * Math.max(1, 1.1 / camera.aspect)
       camera.position.copy(TARGET).addScaledVector(CAM_DIR, dist)
       camera.lookAt(TARGET)
       camera.updateProjectionMatrix()
-      renderer.render(scene, camera)
     }
+    resize()
     const ro = new ResizeObserver(resize)
     ro.observe(cv)
+
+    let loaded = false
+    let visible = false
+    let introStart = -1
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting
+      if (visible && loaded && introStart < 0) introStart = performance.now()
+    }, { threshold: 0.25 })
+    io.observe(cv)
 
     const loader = new GLTFLoader()
     loader.setMeshoptDecoder(MeshoptDecoder)
@@ -134,20 +186,113 @@ export default function CivicRS() {
       if (noseSum < 0) model.rotation.y += Math.PI
       model.updateMatrixWorld(true)
       rig.add(model)
+      rig.updateMatrixWorld(true)
 
+      // Each wheel gets a pivot on its own hub, so the whole wheel turns about its axle.
+      for (const w of WHEELS) {
+        const tyre = boundsOf(model, TYRE_RE, w)
+        if (!tyre) continue
+        const hub = tyre.getCenter(new THREE.Vector3())
+        const pivot = new THREE.Group()
+        pivot.position.copy(hub)
+        rig.add(pivot)
+        pivot.updateMatrixWorld(true)
+        const parts: THREE.Object3D[] = []
+        const wheelRe = new RegExp('(^|\\s)' + w + '_WHEEL')
+        model.traverse((o) => { if ((o as THREE.Mesh).isMesh && wheelRe.test(chainName(o))) parts.push(o) })
+        parts.forEach((o) => pivot.attach(o))
+        wheelPivots.push({ pivot, rear: w.startsWith('R') })
+      }
+
+      loaded = true
+      if (visible && introStart < 0) introStart = performance.now()
       setReady(true)
-      resize()
     })
 
+    let raf = 0
+    let last = performance.now()
+    let lastX = START_X
+    let lastZ = START_Z
+    const tmp = new THREE.Vector3()
+    const frame = (now: number) => {
+      raf = requestAnimationFrame(frame)
+      const dt = Math.min((now - last) / 1000, 0.05)
+      last = now
+      if (!visible || !loaded) return
+      if (introStart < 0) introStart = now
+
+      // Path: roll in from the right, sliding and settling into the print's pose.
+      const k = clamp01((now - introStart) / 1000 / INTRO)
+      const x = lerp(START_X, 0, easeOutCubic(k))
+      const z = lerp(START_Z, 0, easeOutCubic(k))
+      const yaw = lerp(YAW_START, YAW_END, easeOutQuad(k))
+      rig.position.set(x, 0, z)
+      rig.rotation.y = yaw
+      rig.updateMatrixWorld(true)
+      const vx = dt > 0 ? (x - lastX) / dt : 0
+      const vz = dt > 0 ? (z - lastZ) / dt : 0
+      lastX = x
+      lastZ = z
+      const moving = Math.hypot(vx, vz) > 0.05
+
+      // Wheels: spinning hard while sliding, then burning in place after the car settles.
+      const omega = 8 + 26 * (1 - k)
+      wheelPivots.forEach(({ pivot }) => { pivot.rotation.z -= dt * omega })
+
+      // Smoke: heavy while drifting in, a steady plume from the rear tyres once settled.
+      const rate = moving ? 90 : 34
+      emitAcc += rate * dt
+      const rears = wheelPivots.filter((w) => w.rear)
+      while (emitAcc >= 1 && rears.length) {
+        emitAcc -= 1
+        const s = smoke.find((p) => !p.alive)
+        if (!s) break
+        const src = rears[Math.floor(Math.random() * rears.length)].pivot
+        src.getWorldPosition(tmp)
+        s.sprite.position.set(
+          tmp.x + (Math.random() - 0.5) * 0.5,
+          tmp.y + 0.1 + Math.random() * 0.1,
+          tmp.z + (Math.random() - 0.5) * 0.4,
+        )
+        const behind = moving ? 1.2 + Math.random() * 0.8 : 0.3 * Math.random()
+        s.vel.set(behind + (Math.random() - 0.5) * 0.3, 0.6 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6)
+        s.age = 0
+        s.life = 1.6 + Math.random() * 1.2
+        s.alive = true
+        s.sprite.visible = true
+      }
+      smoke.forEach((s) => {
+        if (!s.alive) return
+        s.age += dt
+        if (s.age >= s.life) {
+          s.alive = false
+          s.sprite.visible = false
+          s.mat.opacity = 0
+          return
+        }
+        const t = s.age / s.life
+        s.sprite.position.addScaledVector(s.vel, dt)
+        s.vel.multiplyScalar(1 - 0.6 * dt)
+        s.sprite.scale.setScalar(0.4 + 2.0 * t)
+        s.mat.opacity = 0.55 * Math.pow(1 - t, 1.3)
+      })
+
+      renderer.render(scene, camera)
+    }
+    raf = requestAnimationFrame(frame)
+
     return () => {
+      cancelAnimationFrame(raf)
+      io.disconnect()
       ro.disconnect()
       scene.traverse((o) => {
         const m = o as THREE.Mesh
-        if (!m.isMesh) return
+        if (!m.isMesh && !(o as THREE.Sprite).isSprite) return
         m.geometry?.dispose()
         const mats = Array.isArray(m.material) ? m.material : [m.material]
         mats.forEach((mat) => mat?.dispose())
       })
+      smokeTex.dispose()
       pmrem.dispose()
       renderer.dispose()
     }
