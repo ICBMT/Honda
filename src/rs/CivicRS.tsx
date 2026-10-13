@@ -230,6 +230,8 @@ export default function CivicRS() {
     let lastX = START_X
     let lastZ = START_Z
     const tmp = new THREE.Vector3()
+    // Direction the car last travelled along its path. Smoke trails opposite to it, even after the car has stopped.
+    const travel = new THREE.Vector3(-1, 0, 0)
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
       const dt = Math.min((now - last) / 1000, 0.05)
@@ -254,6 +256,7 @@ export default function CivicRS() {
       lastX = x
       lastZ = z
       const moving = Math.hypot(vx, vz) > 0.05
+      if (moving) travel.lerp(tmp.set(vx, 0, vz).normalize(), Math.min(1, dt * 6)).normalize()
 
       // Wheels: spinning hard while sliding, then burning in place after the car settles.
       const omega = 14 + 26 * (1 - k)
@@ -274,8 +277,13 @@ export default function CivicRS() {
           tmp.y + 0.1 + Math.random() * 0.1,
           tmp.z + (Math.random() - 0.5) * 0.4,
         )
-        const behind = moving ? 1.2 + Math.random() * 0.8 : 0.3 * Math.random()
-        s.vel.set(behind + (Math.random() - 0.5) * 0.3, 0.6 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6)
+        // Smoke streams backwards along the path the car followed, and rises as it goes.
+        const back = moving ? 1.2 + Math.random() * 0.8 : 0.6 + Math.random() * 0.6
+        s.vel.set(
+          -travel.x * back + (Math.random() - 0.5) * 0.3,
+          0.5 + Math.random() * 0.4,
+          -travel.z * back + (Math.random() - 0.5) * 0.3,
+        )
         s.age = 0
         s.life = 1.6 + Math.random() * 1.2
         s.alive = true
