@@ -7,7 +7,7 @@ import rsLogo from './assets/rs-logo.png'
 import streetBg from './assets/street-bg.jpg'
 
 const MODEL_URL = '/models/honda_civic_rs.glb'
-const CAR_LENGTH = 6.2 // a little larger again, so the car fills the right side as in the print
+const CAR_LENGTH = 7.8 // larger again: the car sits close to the viewer, filling the right side as in the print
 const TYRE_RE = /tire|tyre/i
 const WHEELS = ['FL', 'FR', 'RL', 'RR']
 // A wheel's parts: its tyres, rims, bolts and brakes. Rim meshes are named e.g. eHEV_RS_FL_RIMS_01.
@@ -16,7 +16,7 @@ const wheelPart = (w: string) => new RegExp('(^|[^A-Za-z])' + w + '_+(WHEEL|RIMS
 const TARGET = new THREE.Vector3(0, 1.4, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
-const CAM_DIST = 18 // fitted to the print: car spans most of the right side and sits on the road
+const CAM_DIST = 16 // closer camera: the car stops right in front of the view, as in the print
 
 // Final pose (from the print): the front faces the camera, angled toward the left of the frame.
 const YAW_END = -1.81
