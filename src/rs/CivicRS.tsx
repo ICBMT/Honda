@@ -13,10 +13,10 @@ const WHEELS = ['FL', 'FR', 'RL', 'RR']
 // A wheel's parts: its tyres, rims, bolts and brakes. Rim meshes are named e.g. eHEV_RS_FL_RIMS_01.
 const wheelPart = (w: string) => new RegExp('(^|[^A-Za-z])' + w + '_+(WHEEL|RIMS)')
 // Aim above the car so it sits lower in the frame, down on the road.
-const TARGET = new THREE.Vector3(0, 1.1, 0)
+const TARGET = new THREE.Vector3(0, 1.4, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
-const CAM_DIST = 15.2
+const CAM_DIST = 18 // fitted to the print: car spans most of the right side and sits on the road
 
 // Final pose (from the print): the front faces the camera, angled toward the left of the frame.
 const YAW_END = -1.81
