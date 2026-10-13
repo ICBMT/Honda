@@ -1,6 +1,7 @@
 import handRight from './assets/hand-right.png'
 import handLeft from './assets/hand-left.png'
 import logo from './assets/honda-logo.png'
+import cardKey from './assets/card-key.jpg'
 
 // Honda H emblem (generated logo, transparent background).
 export function Emblem({ className = '' }: { className?: string }) {
@@ -64,17 +65,11 @@ export default function KeyScene() {
         {/* soft floor shadow under the reader */}
         <div className="absolute" style={{ left: '30%', top: '97%', width: '52%', height: '4%', background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 70%)' }} />
 
-        {/* Card key: long edge vertical, tilted, floating and turning in a loop */}
-        <div className="absolute" style={{ left: '48.25%', top: '19.05%', width: '16.5%', height: '46.8%', transform: 'rotate(5.5deg)' }}>
+        {/* Card key: generated card, landscape, floating and turning in a loop */}
+        <div className="absolute" style={{ left: '44.5%', top: '31%', width: '24%', aspectRatio: '1.386 / 1', transform: 'rotate(5.5deg)' }}>
           <div className="sk-float h-full w-full [perspective:1400px]">
-            <div
-              className="sk-spin relative h-full w-full overflow-hidden rounded-[1.2cqw] bg-[linear-gradient(180deg,#22262d,#0c0d10_60%,#0b0c0f)] shadow-[0_2cqh_4cqh_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.07)]"
-            >
-              <div className="absolute inset-x-0 bottom-0 h-[6%] bg-gradient-to-r from-[#1b4f94] via-[#2d6bb8] to-[#153a70]" />
-              <div className="absolute inset-[4%] rounded-[1cqw] border border-white/5" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Emblem className="w-[27%] rotate-90 drop-shadow-[0_0_0.4cqw_rgba(255,255,255,0.3)]" />
-              </div>
+            <div className="sk-spin relative h-full w-full overflow-hidden rounded-[1.4cqw] shadow-[0_2cqh_4cqh_rgba(0,0,0,0.6)]">
+              <img src={cardKey} alt="Honda smart key card" draggable={false} className="h-full w-full select-none object-cover" />
             </div>
           </div>
         </div>
