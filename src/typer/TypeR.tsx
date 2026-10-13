@@ -255,24 +255,26 @@ export default function TypeR() {
     const roadCv = document.createElement('canvas')
     roadCv.width = roadCv.height = 512
     const rctx = roadCv.getContext('2d')!
-    rctx.fillStyle = '#16181d'
+    rctx.fillStyle = '#07040a'
     rctx.fillRect(0, 0, 512, 512)
-    for (let i = 0; i < 2600; i++) {
-      rctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`
+    for (let i = 0; i < 1800; i++) {
+      rctx.fillStyle = `rgba(255,40,60,${Math.random() * 0.04})`
       rctx.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2, 1 + Math.random() * 2)
     }
-    rctx.fillStyle = 'rgba(235,235,235,0.75)'
-    rctx.fillRect(0, 14, 512, 6)
-    rctx.fillRect(0, 492, 512, 6)
-    rctx.fillStyle = 'rgba(245,245,240,0.9)'
-    for (let x = 0; x < 512; x += 256) rctx.fillRect(x, 252, 128, 8)
+    rctx.shadowColor = '#ff1030'
+    rctx.shadowBlur = 18
+    rctx.fillStyle = '#ff2b45'
+    rctx.fillRect(0, 12, 512, 7)
+    rctx.fillRect(0, 493, 512, 7)
+    for (let x = 0; x < 512; x += 256) rctx.fillRect(x, 251, 128, 10)
+    rctx.shadowBlur = 0
     const roadTex = new THREE.CanvasTexture(roadCv)
     roadTex.colorSpace = THREE.SRGBColorSpace
     roadTex.wrapS = THREE.RepeatWrapping
     roadTex.wrapT = THREE.RepeatWrapping
     roadTex.repeat.set(400 / ROAD_TILE, 1)
     roadTex.anisotropy = 8
-    const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.92, metalness: 0, transparent: true, opacity: 0 })
+    const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, emissiveMap: roadTex, emissive: '#ff1030', emissiveIntensity: 0.8, roughness: 0.9, metalness: 0, envMapIntensity: 0.12, transparent: true, opacity: 0 })
     const road = new THREE.Mesh(new THREE.PlaneGeometry(400, 40), roadMat)
     road.rotation.x = -Math.PI / 2
     road.position.y = 0.003
@@ -298,9 +300,24 @@ export default function TypeR() {
       const t = THREE.MathUtils.clamp(v, 0, 1)
       return t * t * (3 - 2 * t)
     }
-    const addRow = (z0: number, y0: number, color: string, width: number, speed: number, dash: number, alpha: number) => {
+    // Smoke texture for the wind-tunnel puffs.
+    const smokeCv = document.createElement('canvas')
+    smokeCv.width = smokeCv.height = 128
+    const sctx = smokeCv.getContext('2d')!
+    const sg = sctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+    sg.addColorStop(0, 'rgba(255,255,255,0.9)')
+    sg.addColorStop(0.45, 'rgba(255,255,255,0.3)')
+    sg.addColorStop(1, 'rgba(255,255,255,0)')
+    sctx.fillStyle = sg
+    sctx.fillRect(0, 0, 128, 128)
+    const smokeTex = new THREE.CanvasTexture(smokeCv)
+    const smokePuffs: { sprite: THREE.Sprite; mat: THREE.SpriteMaterial; pts: THREE.Vector3[]; speed: number; seed: number; alpha: number }[] = []
+
+    // A row is one airflow path around the car. Thin glowing lines mark the path; smoke puffs ride along it.
+    const addRow = (z0: number, y0: number, color: string, width: number, speed: number, dash: number, alpha: number, puffCount: number) => {
       const N = 120
       const pos: number[] = []
+      const pts: THREE.Vector3[] = []
       const deflect = Math.abs(z0) < 0.95 ? 1 : 0.35
       for (let i = 0; i < N; i++) {
         const x = 7 - (14 * i) / (N - 1)
@@ -309,6 +326,7 @@ export default function TypeR() {
         const y = y0 + Math.max(0, top - y0) * w * deflect
         const z = z0 + Math.sign(z0) * 0.4 * w
         pos.push(x, y, z)
+        pts.push(new THREE.Vector3(x, y, z))
       }
       const geo = new LineGeometry()
       geo.setPositions(pos)
@@ -319,27 +337,16 @@ export default function TypeR() {
       aero.add(line)
       lineMats.push(mat)
       aeroRows.push({ mat, speed, alpha })
+      for (let k = 0; k < puffCount; k++) {
+        const pmat = new THREE.SpriteMaterial({ map: smokeTex, color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })
+        const sprite = new THREE.Sprite(pmat)
+        aero.add(sprite)
+        smokePuffs.push({ sprite, mat: pmat, pts, speed: speed * 0.12, seed: k / puffCount, alpha: 0.5 })
+      }
     }
     for (let y0 = 0.15; y0 <= 2.45; y0 += 0.16) {
-      addRow(-1.4, y0, '#3ab4ff', 1.6, 0.9, 1.6, 0.9)
-      addRow(1.9, y0, '#7fd8ff', 1.2, 0.6, 1.2, 0.55)
-    }
-
-    const smokeCv = document.createElement('canvas')
-    smokeCv.width = smokeCv.height = 128
-    const sctx = smokeCv.getContext('2d')!
-    const sg = sctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-    sg.addColorStop(0, 'rgba(255,255,255,0.9)')
-    sg.addColorStop(0.45, 'rgba(255,255,255,0.35)')
-    sg.addColorStop(1, 'rgba(255,255,255,0)')
-    sctx.fillStyle = sg
-    sctx.fillRect(0, 0, 128, 128)
-    const smokeTex = new THREE.CanvasTexture(smokeCv)
-    const puffs: { sp: THREE.Sprite; seed: number }[] = []
-    for (let i = 0; i < 26; i++) {
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: '#8fdcff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }))
-      aero.add(sp)
-      puffs.push({ sp, seed: i / 26 })
+      addRow(-1.4, y0, '#3ab4ff', 1.2, 0.9, 1.6, 0.3, 3)
+      addRow(1.9, y0, '#7fd8ff', 1.0, 0.6, 1.2, 0.18, 2)
     }
     let wheelR = 0.34
 
@@ -469,13 +476,15 @@ export default function TypeR() {
         r.mat.dashOffset -= dt * r.speed
         r.mat.opacity = aeroK * r.alpha
       })
-      puffs.forEach((pf) => {
-        const life = (tNow * 0.3 + pf.seed) % 1
-        pf.sp.position.set(-2.1 - life * 4.2, 0.55 + life * 0.7, (pf.seed - 0.5) * 1.0 + Math.sin(tNow * 0.7 + pf.seed * 20) * 0.05)
-        const sz = 0.3 + life * 1.0
-        pf.sp.scale.set(sz, sz, 1)
-        const pm = pf.sp.material as THREE.SpriteMaterial
-        pm.opacity = aeroK * (1 - life) * 0.22
+      smokePuffs.forEach((sp) => {
+        const u = (tNow * sp.speed + sp.seed) % 1
+        const f = u * (sp.pts.length - 1)
+        const i0 = Math.floor(f)
+        const i1 = Math.min(sp.pts.length - 1, i0 + 1)
+        sp.sprite.position.lerpVectors(sp.pts[i0], sp.pts[i1], f - i0)
+        const sz = 0.12 + u * 0.45
+        sp.sprite.scale.set(sz, sz, 1)
+        sp.mat.opacity = aeroK * Math.min(1, u * 8) * (1 - u) * sp.alpha * 0.6
       })
 
       // Cabin light fades in as the camera enters and out as it leaves.
