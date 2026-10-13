@@ -7,13 +7,16 @@ import rsLogo from './assets/rs-logo.png'
 import streetBg from './assets/street-bg.jpg'
 
 const MODEL_URL = '/models/honda_civic_rs.glb'
-const CAR_LENGTH = 5.7 // about 25% larger than before, so the car fills the right side as in the print
+const CAR_LENGTH = 6.2 // a little larger again, so the car fills the right side as in the print
 const TYRE_RE = /tire|tyre/i
 const WHEELS = ['FL', 'FR', 'RL', 'RR']
-const TARGET = new THREE.Vector3(0, 0.62, 0)
+// A wheel's parts: its tyres, rims, bolts and brakes. Rim meshes are named e.g. eHEV_RS_FL_RIMS_01.
+const wheelPart = (w: string) => new RegExp('(^|[^A-Za-z])' + w + '_+(WHEEL|RIMS)')
+// Aim above the car so it sits lower in the frame, down on the road.
+const TARGET = new THREE.Vector3(0, 1.1, 0)
 // Camera: low, front three-quarter, on the car's right side, as in the print.
 const CAM_DIR = new THREE.Vector3(0.42, 0.13, 1).normalize()
-const CAM_DIST = 14.5
+const CAM_DIST = 15.2
 
 // Final pose (from the print): the front faces the camera, angled toward the left of the frame.
 const YAW_END = -1.81
@@ -35,7 +38,7 @@ function chainName(o: THREE.Object3D) {
 function boundsOf(root: THREE.Object3D, re: RegExp, wheel?: string) {
   const box = new THREE.Box3()
   let any = false
-  const wheelRe = wheel ? new RegExp('(^|\\s)' + wheel + '_WHEEL') : null
+  const wheelRe = wheel ? wheelPart(wheel) : null
   root.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
@@ -212,7 +215,7 @@ export default function CivicRS() {
         rig.add(pivot)
         pivot.updateMatrixWorld(true)
         const parts: THREE.Object3D[] = []
-        const wheelRe = new RegExp('(^|\\s)' + w + '_WHEEL')
+        const wheelRe = wheelPart(w)
         model.traverse((o) => { if ((o as THREE.Mesh).isMesh && wheelRe.test(chainName(o))) parts.push(o) })
         parts.forEach((o) => pivot.attach(o))
         wheelPivots.push({ pivot, rear: w.startsWith('R') })
