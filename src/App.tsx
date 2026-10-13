@@ -6,6 +6,7 @@ import SensingMobile from './sensing/SensingMobile'
 import TypeR from './typer/TypeR'
 import LazyMount from './lib/LazyMount'
 import Keyless from './keyless/Keyless'
+import CivicRS from './rs/CivicRS'
 import { startSmoothScroll } from './lib/smooth'
 
 const PHONE_QUERY = '(max-width: 767px), (orientation: portrait) and (max-width: 1100px)'
@@ -36,6 +37,9 @@ export default function App() {
         <TypeR />
       </LazyMount>
       <Keyless />
+      <LazyMount placeholderClass="h-[380vh] w-full bg-[#0b0d12]">
+        <CivicRS />
+      </LazyMount>
     </>
   )
 }
