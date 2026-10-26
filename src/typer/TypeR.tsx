@@ -13,7 +13,7 @@ import TwistText from '../lib/TwistText'
 gsap.registerPlugin(ScrollTrigger)
 
 import { modelSrc } from '../lib/preload'
-import { drive } from '../lib/drive'
+import { drive, MAX_KMH } from '../lib/drive'
 import DriveControls from '../rs/DriveControls'
 const CAR_LENGTH = 4.6
 const CAR_RE = /body_white_ext|tire|tyre|headlight/i
@@ -186,6 +186,9 @@ export default function TypeR() {
   const canvas = useRef<HTMLCanvasElement>(null)
   const paintRef = useRef<(i: number) => void>(() => {})
   const [ready, setReady] = useState(false)
+  // The drive panel shows only once the road appears; this flips only when that changes.
+  const [roadOn, setRoadOn] = useState(false)
+  const roadShown = useRef(false)
   const [paint, setPaint] = useState(0)
 
   useEffect(() => {
@@ -470,18 +473,25 @@ export default function TypeR() {
       rig.position.x = state.carX
       rig.rotation.y = state.carRotY
       rig.updateMatrixWorld(true)
-      wheels.forEach((w) => { w.rotation.z -= dt * (state.spin * 14 + drive.speed * 0.12) })
+      wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
 
       // The road appears as the journey ends, then loops on its own clock: wheels, lane markings and airflow.
       const tNow = now / 1000
       const roadK = smooth01((p - 0.92) / 0.02)
+      const shown = p >= 0.92
+      if (shown !== roadShown.current) {
+        roadShown.current = shown
+        setRoadOn(shown)
+      }
+      // The road moves at the speed set on the drive panel: still when the car is still.
+      const speedK = drive.speed / MAX_KMH
       const aeroK = smooth01((p - 0.93) / 0.02)
       roadMat.opacity = roadK
-      const step = dt * roadK * ROLL_SPEED
+      const step = dt * roadK * ROLL_SPEED * speedK
       wheels.forEach((w) => { w.rotation.z -= step / wheelR })
       roadTex.offset.x += step / ROAD_TILE
       aeroRows.forEach((r) => {
-        r.mat.dashOffset -= dt * r.speed
+        r.mat.dashOffset -= dt * r.speed * speedK
         r.mat.opacity = aeroK * r.alpha
       })
       smokePuffs.forEach((sp) => {
@@ -582,7 +592,7 @@ export default function TypeR() {
           <span className="ml-2 font-light tracking-[0.2em] text-white/80" style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>{PAINTS[paint].name.toUpperCase()}</span>
         </div>
         {/* Drive panel: speedometer and pedals, integrated with the car's wheels and engine sound. */}
-        <div className="absolute inset-x-0 bottom-[18svh] z-[3] flex justify-center px-4 md:bottom-[9vh] md:left-[4vw] md:right-auto md:origin-bottom-left md:scale-90 md:justify-start md:px-0">
+        <div className={`absolute inset-x-0 bottom-[18svh] z-[3] flex justify-center px-4 transition-[opacity,visibility] duration-500 md:bottom-[9vh] md:left-[4vw] md:right-auto md:origin-bottom-left md:scale-90 md:justify-start md:px-0 ${roadOn ? "visible opacity-100" : "invisible opacity-0"}`}>
           <DriveControls />
         </div>
 
