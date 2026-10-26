@@ -357,7 +357,13 @@ export default function TypeR() {
     // Scroll-driven car state. The timeline writes into this; the frame loop reads it.
     const state = { carX: -7, carRotY: 0, spin: 0 }
 
+    // Render on demand: redraw while something moves, plus a short window after a resize or paint change.
+    let forceUntil = 0
+    let lastSig = ''
+    let lastGlow = 0
+
     const resize = () => {
+      forceUntil = performance.now() + 200
       const w = cv.clientWidth
       const h = cv.clientHeight
       renderer.setSize(w, h, false)
@@ -502,12 +508,20 @@ export default function TypeR() {
       camera.position.copy(pose.pos)
       camera.lookAt(pose.look)
 
+      // Animating: wheels spinning, the road loop, the aero trails, or the cabin light still fading.
+      const animating = state.spin !== 0 || p >= 0.92 || Math.abs(glowLevel - lastGlow) > 0.001 || now < forceUntil
+      lastGlow = glowLevel
+      const sig = `${p.toFixed(4)}|${state.carX.toFixed(3)}|${state.carRotY.toFixed(3)}|${state.spin.toFixed(3)}|${fit.toFixed(3)}`
+      if (!animating && sig === lastSig) return
+      lastSig = sig
+
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)
 
     paintRef.current = (i: number) => {
       if (!bodyMat) return
+      forceUntil = performance.now() + 1000
       const col = new THREE.Color(PAINTS[i].hex)
       gsap.to(bodyMat.color, { r: col.r, g: col.g, b: col.b, duration: 0.9, ease: 'power2.out' })
     }

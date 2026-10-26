@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import KeyScene from './KeyScene'
@@ -11,6 +11,16 @@ gsap.registerPlugin(ScrollTrigger)
 export default function Keyless() {
   const wrap = useRef<HTMLElement>(null)
   const track = useRef<HTMLDivElement>(null)
+
+  // Pause the looping card, hand and reader animations while the section is off screen.
+  useEffect(() => {
+    const el = wrap.current!
+    const io = new IntersectionObserver(([entry]) => {
+      el.classList.toggle('kl-idle', !entry.isIntersecting)
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   useLayoutEffect(() => {
     const el = wrap.current!

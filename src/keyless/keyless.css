@@ -1,5 +1,12 @@
 /* Section 4 — smart key. Motion only; layout lives in the components. */
 
+/* Off screen: stop the looping motion (performance). Resumes when the section comes back into view. */
+.kl-idle *,
+.kl-idle *::before,
+.kl-idle *::after {
+  animation-play-state: paused !important;
+}
+
 /* The fixed 4:3 stage: letterboxed on wide screens as before. Narrower-than-4:3 screens (phones in portrait)
    get a stage as tall as the screen, wider than it, and the pinned horizontal scroll pans across it. */
 .kl-stage {
