@@ -35,6 +35,7 @@ let skidFilter: BiquadFilterNode | null = null
 let skidGain: GainNode | null = null
 
 let enabled = false
+let noiseBuf: AudioBuffer | null = null
 let active = false
 
 // Harmonic amplitudes for a four-cylinder: fundamental, 2nd (strong), 3rd, 4th (strong), then decaying.
@@ -108,6 +109,7 @@ function build(): boolean {
   bodyFilter.connect(bodyGain).connect(limiter)
 
   const buf = noiseBuffer(c)
+  noiseBuf = buf
 
   // Intake: air through the throttle body, brighter with the revs and load.
   intakeFilter = c.createBiquadFilter()
@@ -168,6 +170,27 @@ export const sound = {
     if (enabled && ctx.state === 'suspended') void ctx.resume()
     applyMaster()
     return enabled
+  },
+
+  // A short burst of exhaust: a pop when the throttle is lifted with the revs high, or a clunk when a gear is selected.
+  // intensity 0..1 sets how loud it is; freq sets its colour (higher is a crisper crack).
+  pop(intensity: number, freq = 1100) {
+    if (!ctx || !enabled || !noiseBuf || !limiter) return
+    const t = ctx.currentTime
+    const src = ctx.createBufferSource()
+    src.buffer = noiseBuf
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = freq
+    filter.Q.value = 1.4
+    const gain = ctx.createGain()
+    const peak = clamp01(intensity) * 0.5
+    gain.gain.setValueAtTime(0.0001, t)
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
+    src.connect(filter).connect(gain).connect(limiter)
+    src.start(t, Math.random())
+    src.stop(t + 0.1)
   },
 
   // Pauses the sound while the section is off screen.
