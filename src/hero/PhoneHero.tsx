@@ -85,7 +85,7 @@ export default function PhoneHero() {
           <div className="flex flex-col items-start gap-2">
             <a
               href="#civic-rs"
-              className="inline-flex min-h-11 items-center rounded-full bg-[#dc2626] px-5 text-[12px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b91c1c]"
+              className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full bg-[#dc2626] px-5 text-[12px] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#b91c1c]"
             >
               Explore Civic RS
             </a>
