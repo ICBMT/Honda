@@ -53,7 +53,9 @@ const HOLD: { t: number; look: THREE.Vector3 }[] = [
 // Exit: out through the left side of the windshield and past the front-left fender.
 const ORBIT_FROM = 0.88
 const ROLL_FROM = 0.94          // the orbit ends here and the car starts rolling on the road
-const ROLL_SPEED = 6            // world units per second the road runs past when the loop plays
+// One world unit is one metre (the car is 4.6 long, like a real Civic), so the road runs past at the true speed:
+// km/h / 3.6 metres per second. The wheels turn at that speed divided by the tyre radius, so they stay in step.
+const KMH_TO_MPS = 1 / 3.6
 const ROAD_TILE = 10            // world units per repeat of the lane markings
 const EXIT: Key[] = [
   { t: 0.8, pos: CABIN, look: WINDSHIELD_LOOK },
@@ -487,7 +489,7 @@ export default function TypeR() {
       const speedK = drive.speed / MAX_KMH
       const aeroK = smooth01((p - 0.93) / 0.02)
       roadMat.opacity = roadK
-      const step = dt * roadK * ROLL_SPEED * speedK
+      const step = dt * roadK * drive.speed * KMH_TO_MPS
       wheels.forEach((w) => { w.rotation.z -= step / wheelR })
       roadTex.offset.x += step / ROAD_TILE
       aeroRows.forEach((r) => {
