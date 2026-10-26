@@ -31,6 +31,13 @@ export default function App() {
   }, [phone])
   return (
     <>
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-full bg-white px-5 py-3 text-sm font-semibold text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
+      <main id="main">
       {phone ? <PhoneHero /> : <Hero />}
       {phone ? <SensingMobile /> : <Sensing />}
       <LazyMount placeholderClass="h-[560vh] w-full bg-[#05070d]">
@@ -40,6 +47,7 @@ export default function App() {
       <LazyMount placeholderClass="h-screen w-full bg-[#0b0d12]">
         <CivicRS />
       </LazyMount>
+      </main>
     </>
   )
 }

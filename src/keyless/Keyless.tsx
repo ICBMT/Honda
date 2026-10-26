@@ -24,6 +24,11 @@ export default function Keyless() {
 
   useLayoutEffect(() => {
     const el = wrap.current!
+    // Reduced motion: no pinned sideways scroll. The two parts stack vertically, each at full screen height.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.classList.add('kl-reduce')
+      return
+    }
     const ctx = gsap.context(() => {
       gsap.fromTo(track.current, { xPercent: -50 }, {
         xPercent: 0,

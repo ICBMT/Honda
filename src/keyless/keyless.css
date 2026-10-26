@@ -1,5 +1,19 @@
 /* Section 4 — smart key. Motion only; layout lives in the components. */
 
+/* Reduced motion: the section stops pinning and its two parts stack, each a full screen tall. */
+.kl-reduce {
+  height: auto !important;
+  overflow: visible !important;
+}
+.kl-reduce > div {
+  width: 100% !important;
+  flex-direction: column !important;
+}
+.kl-reduce > div > div {
+  height: 100vh !important;
+  width: 100% !important;
+}
+
 /* Off screen: stop the looping motion (performance). Resumes when the section comes back into view. */
 .kl-idle *,
 .kl-idle *::before,
