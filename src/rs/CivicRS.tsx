@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { sound } from '../lib/sound'
+import { drive } from '../lib/drive'
+import DriveControls from './DriveControls'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
@@ -318,7 +320,9 @@ export default function CivicRS() {
       })
 
       // Engine climbs while the car drives in, tyres squeal while it slides, then idles at the print's pose.
-      sound.update(0.25 + 0.75 * (1 - k), moving ? Math.min(1, 0.15 + (1 - k) * 1.2) : 0)
+      // After the roll-in the engine follows the pedals on the drive panel.
+      const engine = k < 1 ? 0.25 + 0.75 * (1 - k) : drive.rpm
+      sound.update(engine, moving ? Math.min(1, 0.15 + (1 - k) * 1.2) : 0)
 
       renderer.render(scene, camera)
     }
@@ -378,6 +382,11 @@ export default function CivicRS() {
       >
         {soundOn ? 'Sound on' : 'Sound off'}
       </button>
+
+      {/* Drive panel: speedometer and pedals. Below the car on phones, bottom-left on desktop. */}
+      <div className="relative z-10 flex justify-center px-6 pb-4 md:absolute md:bottom-[3vh] md:left-[6vw] md:origin-bottom-left md:scale-90 md:justify-start md:px-0 md:pb-0">
+        <DriveControls />
+      </div>
 
       <p className="relative z-10 px-6 pb-[4svh] text-right text-[clamp(18px,5vw,38px)] font-bold italic tracking-[0.02em] text-white sm:px-10 md:absolute md:bottom-[6vh] md:right-[4vw] md:px-0 md:pb-0 md:text-[clamp(18px,2.2vw,38px)]">
         ABSOLUTE THRILL
