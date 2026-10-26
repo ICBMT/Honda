@@ -59,7 +59,7 @@ export default function DriveControls() {
       if (sound.enabled) {
         if (!owned) { sound.setActive(true); owned = true }
         // Engine follows the revs; the tyres squeal under braking.
-        sound.update(drive.rpm, drive.brake * 0.8)
+        sound.update(drive.rpm, drive.brake * 0.8, drive.throttle)
       }
       needle.current?.setAttribute('transform', `rotate(${angleFor(drive.speed)} 100 100)`)
       if (readout.current) readout.current.textContent = String(Math.round(drive.speed)).padStart(3, '0')
