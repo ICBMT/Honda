@@ -19,6 +19,20 @@ body { margin: 0; background: #05070d; color: #f5f7fa; overflow-x: hidden; font-
   outline-offset: 3px;
 }
 
+/* Reduced motion: a pinned horizontal section stacks its parts vertically, each a full screen tall. */
+.stack-reduce {
+  height: auto !important;
+  overflow: visible !important;
+}
+.stack-reduce > div {
+  width: 100% !important;
+  flex-direction: column !important;
+}
+.stack-reduce > div > div {
+  height: 100vh !important;
+  width: 100% !important;
+}
+
 /* Reduced motion: the final readable state, no looping or scroll-scrub motion (skill: animation). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

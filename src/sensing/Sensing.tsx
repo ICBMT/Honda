@@ -119,6 +119,15 @@ export default function Sensing() {
 
   useLayoutEffect(() => {
     const el = wrap.current!
+    // Reduced motion: no pinned sideways scroll and no card tilt. The entrance is shown finished, and the two parts stack.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.classList.add('stack-reduce')
+      gsap.set('[data-intro="sky"], [data-intro="glow"], [data-intro="car"], [data-intro="dome"]', {
+        opacity: 1, scale: 1, x: 0, filter: 'blur(0px)',
+      })
+      gsap.set('[data-intro="title"] > *', { opacity: 1, y: 0 })
+      return
+    }
     const ctx = gsap.context(() => {
       const horizontal = gsap.to(track.current, {
         xPercent: -50,
