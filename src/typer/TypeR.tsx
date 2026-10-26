@@ -557,6 +557,9 @@ export default function TypeR() {
           TRACK-BRED · ROAD-LEGAL
         </p>
 
+        {/* Bottom shade behind the paint swatches and the hint, so both keep their contrast over the cabin. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[24vh] bg-gradient-to-t from-[#05070d]/90 via-[#05070d]/50 to-transparent" />
+
         <div className="absolute bottom-[7vh] left-1/2 flex -translate-x-1/2 items-center gap-4">
           {PAINTS.map((p, i) => (
             <button
@@ -576,7 +579,7 @@ export default function TypeR() {
           ))}
           <span className="ml-2 font-light tracking-[0.2em] text-white/80" style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>{PAINTS[paint].name.toUpperCase()}</span>
         </div>
-        <p className="pointer-events-none absolute bottom-[2.5vh] right-[4vw] text-[10px] tracking-[0.25em] text-white/40">
+        <p className="pointer-events-none absolute bottom-[2.5vh] right-[4vw] z-[2] text-[10px] tracking-[0.25em] text-white/75">
           SCROLL TO DRIVE
         </p>
       </div>

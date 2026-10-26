@@ -141,7 +141,8 @@ export default function CivicRS() {
       const h = cv.clientHeight
       renderer.setSize(w, h, false)
       camera.aspect = w / h
-      const dist = CAM_DIST * Math.max(1, 0.9 / camera.aspect)
+      // Narrow screens: pull back further so the whole car fits with a margin on both sides.
+      const dist = CAM_DIST * Math.max(1, 1.2 / camera.aspect)
       camera.position.copy(TARGET).addScaledVector(CAM_DIR, dist)
       camera.lookAt(TARGET)
       // Wide screens: slide the view so the car sits on the right, clear of the copy on the left.
