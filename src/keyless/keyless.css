@@ -1,5 +1,18 @@
 /* Section 4 — smart key. Motion only; layout lives in the components. */
 
+/* The fixed 4:3 stage: letterboxed on wide screens as before. Narrower-than-4:3 screens (phones in portrait)
+   get a stage as tall as the screen, wider than it, and the pinned horizontal scroll pans across it. */
+.kl-stage {
+  width: min(100vw, 133.333vh);
+  height: min(100vh, 75vw);
+}
+@media (max-aspect-ratio: 4/3) {
+  .kl-stage {
+    width: 133.333vh;
+    height: 100vh;
+  }
+}
+
 @keyframes sk-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1.4vh); }

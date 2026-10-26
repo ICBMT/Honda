@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { sound } from '../lib/sound'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
@@ -74,6 +75,7 @@ export default function CivicRS() {
   const root = useRef<HTMLElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
+  const [soundOn, setSoundOn] = useState(false)
 
   useEffect(() => {
     const cv = canvas.current!
@@ -243,7 +245,11 @@ export default function CivicRS() {
       // Run only while the section is on screen; the intro starts the first time it is.
       const r = cv.getBoundingClientRect()
       const onScreen = r.bottom > 0 && r.top < window.innerHeight
-      if (!onScreen) return
+      if (!onScreen) {
+        sound.setActive(false)
+        return
+      }
+      sound.setActive(true)
       if (introStart < 0) introStart = now
 
       // Path: roll in from the right, sliding and settling into the print's pose.
@@ -308,12 +314,16 @@ export default function CivicRS() {
         s.mat.opacity = 0.55 * Math.pow(1 - t, 1.3)
       })
 
+      // Engine climbs while the car drives in, tyres squeal while it slides, then idles at the print's pose.
+      sound.update(0.25 + 0.75 * (1 - k), moving ? Math.min(1, 0.15 + (1 - k) * 1.2) : 0)
+
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)
 
     return () => {
       cancelAnimationFrame(raf)
+      sound.setActive(false)
       ro.disconnect()
       scene.traverse((o) => {
         const m = o as THREE.Mesh
@@ -355,6 +365,15 @@ export default function CivicRS() {
           style={{ opacity: ready ? 1 : 0 }}
         />
       </div>
+
+      <button
+        type="button"
+        onClick={() => setSoundOn(sound.toggle())}
+        aria-pressed={soundOn}
+        className="absolute right-4 top-4 z-20 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur transition hover:border-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:right-6 md:top-6"
+      >
+        {soundOn ? 'Sound on' : 'Sound off'}
+      </button>
 
       <p className="relative z-10 px-6 pb-[4svh] text-right text-[clamp(18px,5vw,38px)] font-bold italic tracking-[0.02em] text-white sm:px-10 md:absolute md:bottom-[6vh] md:right-[4vw] md:px-0 md:pb-0 md:text-[clamp(18px,2.2vw,38px)]">
         ABSOLUTE THRILL

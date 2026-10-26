@@ -19,10 +19,8 @@ export default function KeyScene() {
   return (
     <div className="flex h-full w-screen items-center justify-center overflow-hidden bg-[#0d0f12]">
       <div
-        className="relative overflow-hidden"
+        className="kl-stage relative overflow-hidden"
         style={{
-          width: 'min(100vw, 133.333vh)',
-          height: 'min(100vh, 75vw)',
           containerType: 'size',
           background: 'radial-gradient(ellipse 70% 60% at 78% 28%, #a3a9b2 0%, #6c727b 35%, #3a3e46 68%, #191b20 100%)',
         } as React.CSSProperties}

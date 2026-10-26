@@ -30,10 +30,8 @@ export default function EntryScene() {
   return (
     <div className="flex h-full w-screen items-center justify-center overflow-hidden bg-[#0d0f12]">
       <div
-        className="relative overflow-hidden"
+        className="kl-stage relative overflow-hidden"
         style={{
-          width: 'min(100vw, 133.333vh)',
-          height: 'min(100vh, 75vw)',
           containerType: 'size',
           background: 'radial-gradient(ellipse 80% 70% at 35% 30%, #2a2d33 0%, #1e2025 55%, #15171b 100%)',
         } as React.CSSProperties}
