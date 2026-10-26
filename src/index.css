@@ -2,6 +2,33 @@
 
 body { margin: 0; background: #05070d; color: #f5f7fa; overflow-x: hidden; font-family: Montserrat, system-ui, sans-serif; }
 
+/* ---------- Design tokens (see design-system/honda-civic/MASTER.md) ---------- */
+:root {
+  --color-bg: #05070d;
+  --color-surface: #0b0d12;
+  --color-text: #f5f7fa;
+  --color-muted: rgba(245, 247, 250, 0.78);
+  --color-accent: #dc2626;
+  --color-ring: #f5f7fa;
+  --touch-min: 44px;
+}
+
+/* Visible keyboard focus everywhere (skill: accessibility, CRITICAL). */
+:where(a, button, [role='button'], input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 3px;
+}
+
+/* Reduced motion: the final readable state, no looping or scroll-scrub motion (skill: animation). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ---------- Hero ---------- */
 .puff {
   position: absolute;
