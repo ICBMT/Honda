@@ -63,6 +63,18 @@ export default function Hero() {
       })
     }
 
+    // Reduced motion: show the finished composition at once (no roll-in, headlight loop, smoke or spinning tyres).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.set(stage, { autoAlpha: 1, scale: 1, filter: 'blur(0px)' })
+      gsap.set(letters, { yPercent: 0, autoAlpha: 1 })
+      gsap.set('[data-header], [data-tagline]', { autoAlpha: 1, y: 0 })
+      gsap.set(wrappers.red, { xPercent: 0, rotation: -1.2, autoAlpha: 1, scale: 1, transformOrigin: '50% 90%' })
+      gsap.set(wrappers.blue, { xPercent: 0, rotation: 1.0, autoAlpha: 1, scale: 1, transformOrigin: '50% 90%' })
+      gsap.set(wrappers.white, { xPercent: 0, yPercent: 0, rotation: 1.0, autoAlpha: 1, scale: 1, transformOrigin: '50% 90%' })
+      gsap.set([...lights, ...blurs], { opacity: 0 })
+      return () => {}
+    }
+
     const ctx = gsap.context(() => {
       // Initial states
       gsap.set(stage, { autoAlpha: 0, scale: 0.92, filter: 'blur(14px)' })
@@ -244,6 +256,31 @@ export default function Hero() {
             </span>
           ))}
         </div>
+      </div>
+
+      {/* Soft shade behind the calls to action, so the text keeps its contrast over bright sky and paint. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[22vh] bg-gradient-to-t from-[#05070d]/85 via-[#05070d]/40 to-transparent" />
+
+      {/* Calls to action. 44px targets, visible focus, and the sections they lead to are anchored by id. */}
+      <div data-header className="absolute bottom-[5vh] left-[3vw] right-[3vw] z-10 flex items-end justify-between gap-6 text-white">
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href="#civic-rs"
+            className="inline-flex min-h-11 items-center rounded-full bg-[#dc2626] px-7 py-3 text-[13px] font-semibold uppercase tracking-[0.16em] text-white transition-colors duration-200 hover:bg-[#b91c1c]"
+          >
+            Explore Civic RS
+          </a>
+          <a
+            href="#type-r"
+            className="inline-flex min-h-11 items-center rounded-full border border-white/40 px-7 py-3 text-[13px] font-semibold uppercase tracking-[0.16em] text-white transition-colors duration-200 hover:border-white hover:bg-white/10"
+          >
+            Civic Type-R
+          </a>
+        </div>
+        <a href="#sensing" className="hidden min-h-11 items-center gap-3 text-[12px] font-light uppercase tracking-[0.24em] text-white/80 transition-colors hover:text-white md:inline-flex">
+          <span aria-hidden="true" className="inline-block h-px w-10 bg-white/60" />
+          Scroll to explore
+        </a>
       </div>
     </section>
   )

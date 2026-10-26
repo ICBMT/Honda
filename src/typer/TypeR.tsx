@@ -542,7 +542,7 @@ export default function TypeR() {
   }, [paint, ready])
 
   return (
-    <section ref={root} className="relative h-[560vh] w-full bg-[#05070d]" aria-label="Civic Type-R">
+    <section id="type-r" ref={root} className="relative h-[560vh] w-full bg-[#05070d]" aria-label="Civic Type-R">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(200,16,46,0.22),transparent_60%)]" />
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />

@@ -208,7 +208,7 @@ export default function Sensing() {
   }, [])
 
   return (
-    <section ref={wrap} className="relative h-screen w-full overflow-hidden bg-[#05070d] text-white">
+    <section id="sensing" ref={wrap} className="relative h-screen w-full overflow-hidden bg-[#05070d] text-white">
       <div ref={track} className="flex h-full w-[200vw]">
         {/* Part 1: Honda SENSING, scanning the surroundings in a loop */}
         <div className="relative h-full w-screen overflow-hidden bg-[#0a0c10]">

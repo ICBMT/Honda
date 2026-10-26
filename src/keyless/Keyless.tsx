@@ -43,7 +43,7 @@ export default function Keyless() {
   }, [])
 
   return (
-    <section ref={wrap} className="relative h-screen w-full overflow-hidden bg-[#0b0d12] text-white" aria-label="Smart key">
+    <section id="smart-key" ref={wrap} className="relative h-screen w-full overflow-hidden bg-[#0b0d12] text-white" aria-label="Smart key">
       <div ref={track} className="flex h-full w-[200vw] flex-row-reverse">
         <KeyScene />
         <EntryScene />

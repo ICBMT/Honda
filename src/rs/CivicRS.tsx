@@ -342,6 +342,7 @@ export default function CivicRS() {
 
   return (
     <section
+      id="civic-rs"
       ref={root}
       className="relative flex min-h-svh w-full flex-col overflow-hidden bg-[#0b0d12] text-white md:block md:h-screen"
       aria-label="Civic RS"

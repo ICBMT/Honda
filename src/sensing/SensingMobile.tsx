@@ -23,7 +23,7 @@ export default function SensingMobile() {
   }
 
   return (
-    <section className="relative h-screen w-full overflow-hidden bg-[#05070d] text-white">
+    <section id="sensing" className="relative h-screen w-full overflow-hidden bg-[#05070d] text-white">
       <div
         ref={scroller}
         onScroll={onScroll}
