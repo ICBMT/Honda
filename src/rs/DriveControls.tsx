@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { drive, MAX_KMH, stepDrive } from '../lib/drive'
+import { sound } from '../lib/sound'
 
 // Speedometer and three pedals. Hold a pedal (mouse, touch, or Space/Enter with focus) to press it.
 // Keyboard shortcuts work while the panel has focus: ArrowUp accelerator, ArrowDown brake, C clutch.
@@ -33,12 +34,15 @@ export default function DriveControls() {
   const readout = useRef<HTMLSpanElement>(null)
   const rev = useRef<HTMLDivElement>(null)
   const [pressed, setPressed] = useState<Record<Pedal, boolean>>({ throttle: false, brake: false, clutch: false })
+  const [soundOn, setSoundOn] = useState(sound.enabled)
 
   // Run the drive model and paint the dial. Stops when the panel is off screen.
   useEffect(() => {
     let raf = 0
     let last = performance.now()
     let visible = true
+    // Whether this panel switched the engine sound on. Only then does it switch it off again.
+    let owned = false
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting })
     const el = needle.current?.ownerSVGElement?.parentElement
     if (el) io.observe(el)
@@ -47,8 +51,16 @@ export default function DriveControls() {
       // The first frame can carry a timestamp from before this effect ran, so never let the step go negative.
       const dt = Math.max(0, Math.min((now - last) / 1000, 0.05))
       last = now
-      if (!visible) return
+      if (!visible) {
+        if (owned) { sound.setActive(false); owned = false }
+        return
+      }
       stepDrive(dt)
+      if (sound.enabled) {
+        if (!owned) { sound.setActive(true); owned = true }
+        // Engine follows the revs; the tyres squeal under braking.
+        sound.update(drive.rpm, drive.brake * 0.8)
+      }
       needle.current?.setAttribute('transform', `rotate(${angleFor(drive.speed)} 100 100)`)
       if (readout.current) readout.current.textContent = String(Math.round(drive.speed)).padStart(3, '0')
       if (rev.current) rev.current.style.transform = `scaleX(${Math.min(1, drive.rpm)})`
@@ -86,6 +98,17 @@ export default function DriveControls() {
       onKeyUp={(e) => onKey(e, false)}
       onBlur={() => { set('throttle', false); set('brake', false); set('clutch', false) }}
     >
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-white/70">Drive</p>
+        <button
+          type="button"
+          onClick={() => setSoundOn(sound.toggle())}
+          aria-pressed={soundOn}
+          className="min-h-11 min-w-11 rounded-full border border-white/25 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90 transition hover:border-white/60"
+        >
+          {soundOn ? 'Sound on' : 'Sound off'}
+        </button>
+      </div>
       <div className="flex items-center gap-4">
         <svg viewBox="0 0 200 200" className="h-[120px] w-[120px] shrink-0" aria-hidden="true">
           <circle cx="100" cy="100" r="96" fill="#07090e" stroke="rgba(255,255,255,0.12)" />

@@ -13,6 +13,8 @@ import TwistText from '../lib/TwistText'
 gsap.registerPlugin(ScrollTrigger)
 
 import { modelSrc } from '../lib/preload'
+import { drive } from '../lib/drive'
+import DriveControls from '../rs/DriveControls'
 const CAR_LENGTH = 4.6
 const CAR_RE = /body_white_ext|tire|tyre|headlight/i
 const TYRE_RE = /tire|tyre/i
@@ -468,7 +470,7 @@ export default function TypeR() {
       rig.position.x = state.carX
       rig.rotation.y = state.carRotY
       rig.updateMatrixWorld(true)
-      wheels.forEach((w) => { w.rotation.z -= dt * state.spin * 14 })
+      wheels.forEach((w) => { w.rotation.z -= dt * (state.spin * 14 + drive.speed * 0.12) })
 
       // The road appears as the journey ends, then loops on its own clock: wheels, lane markings and airflow.
       const tNow = now / 1000
@@ -509,7 +511,7 @@ export default function TypeR() {
       camera.lookAt(pose.look)
 
       // Animating: wheels spinning, the road loop, the aero trails, or the cabin light still fading.
-      const animating = state.spin !== 0 || p >= 0.92 || Math.abs(glowLevel - lastGlow) > 0.001 || now < forceUntil
+      const animating = state.spin !== 0 || drive.speed > 0.01 || p >= 0.92 || Math.abs(glowLevel - lastGlow) > 0.001 || now < forceUntil
       lastGlow = glowLevel
       const sig = `${p.toFixed(4)}|${state.carX.toFixed(3)}|${state.carRotY.toFixed(3)}|${state.spin.toFixed(3)}|${fit.toFixed(3)}`
       if (!animating && sig === lastSig) return
@@ -579,6 +581,11 @@ export default function TypeR() {
           ))}
           <span className="ml-2 font-light tracking-[0.2em] text-white/80" style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>{PAINTS[paint].name.toUpperCase()}</span>
         </div>
+        {/* Drive panel: speedometer and pedals, integrated with the car's wheels and engine sound. */}
+        <div className="absolute inset-x-0 bottom-[18svh] z-[3] flex justify-center px-4 md:bottom-[9vh] md:left-[4vw] md:right-auto md:origin-bottom-left md:scale-90 md:justify-start md:px-0">
+          <DriveControls />
+        </div>
+
         <p className="pointer-events-none absolute bottom-[2.5vh] right-[4vw] z-[2] text-[10px] tracking-[0.25em] text-white/75">
           SCROLL TO DRIVE
         </p>
