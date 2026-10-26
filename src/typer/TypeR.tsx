@@ -547,6 +547,9 @@ export default function TypeR() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(200,16,46,0.22),transparent_60%)]" />
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
 
+        {/* Top shade so the title and its subtitle keep their contrast over the bright cabin and mirror. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[30vh] bg-gradient-to-b from-[#05070d]/85 to-transparent" />
+
         <h2 className="pointer-events-none absolute left-1/2 top-[7vh] -translate-x-1/2 whitespace-nowrap text-center font-black uppercase leading-none tracking-[0.02em] text-white" style={{ fontSize: 'clamp(40px, 8vw, 150px)' }}>
           <TwistText text="Civic Type-R" />
         </h2>
