@@ -95,8 +95,10 @@ export default function SensingMobile() {
             onClick={() => goTo(i)}
             aria-label={i === 0 ? 'Honda SENSING' : FEATURES[i - 1].title}
             aria-current={index === i}
-            className={`h-2 rounded-full transition-all duration-300 ${index === i ? 'w-6 bg-amber-400' : 'w-2 bg-white/30'}`}
-          />
+            className="grid h-11 min-w-11 place-items-center"
+          >
+            <span className={`block h-2 rounded-full transition-all duration-300 ${index === i ? 'w-6 bg-amber-400' : 'w-2 bg-white/30'}`} />
+          </button>
         ))}
       </nav>
     </section>

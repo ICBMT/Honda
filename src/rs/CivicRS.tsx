@@ -155,6 +155,8 @@ export default function CivicRS() {
 
     let loaded = false
     let introStart = -1
+    // Reduced motion: no roll-in, the car is already at its final pose.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const loader = new GLTFLoader()
     loader.setMeshoptDecoder(MeshoptDecoder)
@@ -253,7 +255,7 @@ export default function CivicRS() {
       if (introStart < 0) introStart = now
 
       // Path: roll in from the right, sliding and settling into the print's pose.
-      const k = clamp01((now - introStart) / 1000 / INTRO)
+      const k = reduceMotion ? 1 : clamp01((now - introStart) / 1000 / INTRO)
       const x = lerp(START_X, 0, easeOutCubic(k))
       const z = lerp(START_Z, 0, easeOutCubic(k))
       const yaw = lerp(YAW_START, YAW_END, easeOutQuad(k))
@@ -370,7 +372,7 @@ export default function CivicRS() {
         type="button"
         onClick={() => setSoundOn(sound.toggle())}
         aria-pressed={soundOn}
-        className="absolute right-4 top-4 z-20 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur transition hover:border-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:right-6 md:top-6"
+        className="absolute right-4 top-4 z-20 min-h-11 min-w-11 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur transition hover:border-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:right-6 md:top-6"
       >
         {soundOn ? 'Sound on' : 'Sound off'}
       </button>

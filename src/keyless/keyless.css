@@ -20,6 +20,23 @@
   }
 }
 
+/* Copy: its own place on the 4:3 stage, and a readable size (at least 12px) on portrait phones. */
+.kl-copy {
+  left: 35%;
+  top: 19.6%;
+  font-size: 1.15cqh;
+  line-height: 1.75cqh;
+  letter-spacing: 0.06em;
+}
+@media (max-aspect-ratio: 4/3) {
+  .kl-copy {
+    left: 8%;
+    top: 9%;
+    font-size: max(12px, 1.7cqh);
+    line-height: 1.5;
+  }
+}
+
 @keyframes sk-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1.4vh); }

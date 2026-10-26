@@ -27,8 +27,7 @@ export default function KeyScene() {
       >
         {/* Copy */}
         <div
-          className="absolute font-light uppercase text-white/90"
-          style={{ left: '35%', top: '19.6%', fontSize: '1.15cqh', lineHeight: '1.75cqh', letterSpacing: '0.06em' }}
+          className="kl-copy absolute font-light uppercase text-white/90"
         >
           <p className="font-semibold">CARD KEY:</p>
           <p>SMART DOOR</p>

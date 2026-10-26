@@ -561,10 +561,15 @@ export default function TypeR() {
               type="button"
               onClick={() => setPaint(i)}
               aria-label={p.name}
+              aria-pressed={paint === i}
               title={p.name}
-              className={`h-8 w-8 rounded-full border-2 transition-transform duration-300 hover:scale-125 ${paint === i ? 'scale-110 border-white' : 'border-white/30'}`}
-              style={{ background: p.hex }}
-            />
+              className="grid h-11 w-11 place-items-center rounded-full transition-transform duration-300 hover:scale-110"
+            >
+              <span
+                className={`block h-8 w-8 rounded-full border-2 ${paint === i ? 'scale-110 border-white' : 'border-white/30'}`}
+                style={{ background: p.hex }}
+              />
+            </button>
           ))}
           <span className="ml-2 font-light tracking-[0.2em] text-white/80" style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>{PAINTS[paint].name.toUpperCase()}</span>
         </div>
